@@ -13,7 +13,7 @@ export function useFunnel() {
     let alive = true
     ;(async () => {
       const { data, error } = await supabase
-        .from('funnel_questions')
+        .from('salon_funnel_questions')
         .select('*')
         .eq('active', true)
         .order('sort_order', { ascending: true })

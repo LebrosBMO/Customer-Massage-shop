@@ -201,7 +201,7 @@ function ReservationsPanel({ demo }) {
     if (demo) return
     setLoading(true)
     const { data, error } = await supabase
-      .from('reservations')
+      .from('salon_reservations')
       .select('*')
       .order('created_at', { ascending: false })
     if (error) setError(error.message)
@@ -214,7 +214,7 @@ function ReservationsPanel({ demo }) {
   async function setStatus(id, status) {
     setRows((rs) => rs.map((r) => (r.id === id ? { ...r, status } : r)))
     if (demo) return
-    const { error } = await supabase.from('reservations').update({ status }).eq('id', id)
+    const { error } = await supabase.from('salon_reservations').update({ status }).eq('id', id)
     if (error) { setError(error.message); load() }
   }
 
@@ -318,7 +318,7 @@ function ServicesPanel({ demo }) {
     if (demo) return
     setLoading(true)
     const { data, error } = await supabase
-      .from('services')
+      .from('salon_services')
       .select('*')
       .order('sort_order', { ascending: true })
     if (error) setError(error.message)
@@ -366,8 +366,8 @@ function ServicesPanel({ demo }) {
     }
 
     const { error } = isNew
-      ? await supabase.from('services').insert(payload)
-      : await supabase.from('services').update(payload).eq('id', editing.id)
+      ? await supabase.from('salon_services').insert(payload)
+      : await supabase.from('salon_services').update(payload).eq('id', editing.id)
 
     setSaving(false)
     if (error) { setError(error.message); return }
@@ -381,7 +381,7 @@ function ServicesPanel({ demo }) {
       setRows((rs) => rs.filter((r) => r.id !== svc.id))
       return
     }
-    const { error } = await supabase.from('services').delete().eq('id', svc.id)
+    const { error } = await supabase.from('salon_services').delete().eq('id', svc.id)
     if (error) setError(error.message)
     else load()
   }
@@ -390,7 +390,7 @@ function ServicesPanel({ demo }) {
     const next = !svc.active
     setRows((rs) => rs.map((r) => (r.id === svc.id ? { ...r, active: next } : r)))
     if (demo) return
-    const { error } = await supabase.from('services').update({ active: next }).eq('id', svc.id)
+    const { error } = await supabase.from('salon_services').update({ active: next }).eq('id', svc.id)
     if (error) { setError(error.message); load() }
   }
 
@@ -536,7 +536,7 @@ function FunnelPanel({ demo }) {
     if (demo) return
     setLoading(true)
     const { data, error } = await supabase
-      .from('funnel_questions')
+      .from('salon_funnel_questions')
       .select('*')
       .order('sort_order', { ascending: true })
     if (error) setError(error.message)
@@ -590,8 +590,8 @@ function FunnelPanel({ demo }) {
     }
 
     const { error } = isNew
-      ? await supabase.from('funnel_questions').insert(payload)
-      : await supabase.from('funnel_questions').update(payload).eq('id', editing.id)
+      ? await supabase.from('salon_funnel_questions').insert(payload)
+      : await supabase.from('salon_funnel_questions').update(payload).eq('id', editing.id)
     setSaving(false)
     if (error) { setError(error.message); return }
     setEditing(null)
@@ -601,7 +601,7 @@ function FunnelPanel({ demo }) {
   async function remove(q) {
     if (!window.confirm('Энэ асуултыг устгах уу?')) return
     if (demo) { setRows((rs) => rs.filter((r) => r.id !== q.id)); return }
-    const { error } = await supabase.from('funnel_questions').delete().eq('id', q.id)
+    const { error } = await supabase.from('salon_funnel_questions').delete().eq('id', q.id)
     if (error) setError(error.message)
     else load()
   }
@@ -610,7 +610,7 @@ function FunnelPanel({ demo }) {
     const next = !q.active
     setRows((rs) => rs.map((r) => (r.id === q.id ? { ...r, active: next } : r)))
     if (demo) return
-    const { error } = await supabase.from('funnel_questions').update({ active: next }).eq('id', q.id)
+    const { error } = await supabase.from('salon_funnel_questions').update({ active: next }).eq('id', q.id)
     if (error) { setError(error.message); load() }
   }
 

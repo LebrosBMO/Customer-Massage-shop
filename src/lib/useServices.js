@@ -34,7 +34,7 @@ export function useServices() {
     let alive = true
     ;(async () => {
       const { data, error } = await supabase
-        .from('services')
+        .from('salon_services')
         .select('*')
         .eq('active', true)
         .order('sort_order', { ascending: true })

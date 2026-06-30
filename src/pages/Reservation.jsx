@@ -46,7 +46,7 @@ export default function Reservation() {
       return
     }
 
-    const { error } = await supabase.from('reservations').insert({
+    const { error } = await supabase.from('salon_reservations').insert({
       name: form.name,
       phone: form.phone,
       email: form.email || null,

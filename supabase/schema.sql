@@ -1,7 +1,7 @@
 -- Run this in the Supabase SQL editor to create the reservations table.
 -- Dashboard: your project > SQL Editor > New query > paste > Run.
 
-create table if not exists public.reservations (
+create table if not exists public.salon_reservations (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   name text not null,
@@ -17,12 +17,12 @@ create table if not exists public.reservations (
 );
 
 -- Enable Row Level Security.
-alter table public.reservations enable row level security;
+alter table public.salon_reservations enable row level security;
 
 -- Allow anonymous visitors to submit a reservation (INSERT only).
 -- They cannot read, update, or delete rows.
 create policy "Public can create reservations"
-  on public.reservations
+  on public.salon_reservations
   for insert
   to anon
   with check (true);
@@ -35,20 +35,20 @@ create policy "Public can create reservations"
 -- reservations. Create staff logins in the Supabase dashboard:
 --   Authentication > Users > Add user (email + password).
 create policy "Staff can read reservations"
-  on public.reservations
+  on public.salon_reservations
   for select
   to authenticated
   using (true);
 
 create policy "Staff can update reservations"
-  on public.reservations
+  on public.salon_reservations
   for update
   to authenticated
   using (true)
   with check (true);
 
 create policy "Staff can delete reservations"
-  on public.reservations
+  on public.salon_reservations
   for delete
   to authenticated
   using (true);
@@ -57,7 +57,7 @@ create policy "Staff can delete reservations"
 -- ---------------------------------------------------------------------------
 -- Services: editable from the admin panel (/admin > Үйлчилгээ tab).
 -- ---------------------------------------------------------------------------
-create table if not exists public.services (
+create table if not exists public.salon_services (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   sort_order int not null default 0,
@@ -70,27 +70,27 @@ create table if not exists public.services (
   active boolean not null default true
 );
 
-alter table public.services enable row level security;
+alter table public.salon_services enable row level security;
 
 -- Public visitors can read only active services (for the public site).
 create policy "Public can read active services"
-  on public.services
+  on public.salon_services
   for select
   to anon
   using (active = true);
 
 -- Signed-in staff can read all services (including hidden) and edit them.
 create policy "Staff can read all services"
-  on public.services for select to authenticated using (true);
+  on public.salon_services for select to authenticated using (true);
 create policy "Staff can insert services"
-  on public.services for insert to authenticated with check (true);
+  on public.salon_services for insert to authenticated with check (true);
 create policy "Staff can update services"
-  on public.services for update to authenticated using (true) with check (true);
+  on public.salon_services for update to authenticated using (true) with check (true);
 create policy "Staff can delete services"
-  on public.services for delete to authenticated using (true);
+  on public.salon_services for delete to authenticated using (true);
 
 -- Seed the table with the starter services so a fresh site is not empty.
-insert into public.services (sort_order, name, duration, price_60, price_90, blurb, image)
+insert into public.salon_services (sort_order, name, duration, price_60, price_90, blurb, image)
 values
   (0, 'Сонгодог тайвшруулах массаж', '60–90 мин', '150,000₮', '200,000₮', 'Бүх биеийг хамарсан, дулаахан тосоор хийх уян урсгалтай массаж нь хурцадлыг тайлж, тав тухыг сэргээнэ.', 'https://images.unsplash.com/photo-1544161515-4ab6ce6db874?w=800&q=70'),
   (1, 'Тантрик массаж', '90 мин', '200,000₮', '280,000₮', 'Амьсгалыг чиглүүлж, мэдрэхүйг сэрээн, гүн амралтад хүргэх удаан, ухамсартай зан үйл.', 'https://images.unsplash.com/photo-1600334129128-685c5582fd35?w=800&q=70'),
@@ -105,7 +105,7 @@ on conflict do nothing;
 -- Funnel questions: the step-by-step questionnaire, editable in /admin.
 -- `choices` is JSON: [{ "label": "...", "disqualifies": false }, ...]
 -- ---------------------------------------------------------------------------
-create table if not exists public.funnel_questions (
+create table if not exists public.salon_funnel_questions (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   sort_order int not null default 0,
@@ -114,22 +114,22 @@ create table if not exists public.funnel_questions (
   active boolean not null default true
 );
 
-alter table public.funnel_questions enable row level security;
+alter table public.salon_funnel_questions enable row level security;
 
 create policy "Public can read active questions"
-  on public.funnel_questions for select to anon using (active = true);
+  on public.salon_funnel_questions for select to anon using (active = true);
 create policy "Staff can read all questions"
-  on public.funnel_questions for select to authenticated using (true);
+  on public.salon_funnel_questions for select to authenticated using (true);
 create policy "Staff can insert questions"
-  on public.funnel_questions for insert to authenticated with check (true);
+  on public.salon_funnel_questions for insert to authenticated with check (true);
 create policy "Staff can update questions"
-  on public.funnel_questions for update to authenticated using (true) with check (true);
+  on public.salon_funnel_questions for update to authenticated using (true) with check (true);
 create policy "Staff can delete questions"
-  on public.funnel_questions for delete to authenticated using (true);
+  on public.salon_funnel_questions for delete to authenticated using (true);
 
 -- Seeded linear (no branching). Add branching per-answer in /admin > Асуулга —
 -- the admin stores each choice's `next` as the real question id.
-insert into public.funnel_questions (sort_order, question, choices) values
+insert into public.salon_funnel_questions (sort_order, question, choices) values
   (0, 'Та урьд нь манай үйлчилгээг авч байсан уу?',
       '[{"label":"Тийм, өмнө нь","disqualifies":false},{"label":"Үгүй, анх удаа","disqualifies":false}]'::jsonb),
   (1, 'Таны нас?',
@@ -146,7 +146,7 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 -- Funnel submissions: a completed questionnaire (with answers + contact).
 -- ---------------------------------------------------------------------------
-create table if not exists public.funnel_submissions (
+create table if not exists public.salon_funnel_submissions (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   name text,
@@ -157,12 +157,12 @@ create table if not exists public.funnel_submissions (
   amount int
 );
 
-alter table public.funnel_submissions enable row level security;
+alter table public.salon_funnel_submissions enable row level security;
 
 -- Anyone can submit; only staff can read/manage.
 create policy "Public can create submissions"
-  on public.funnel_submissions for insert to anon with check (true);
+  on public.salon_funnel_submissions for insert to anon with check (true);
 create policy "Staff can read submissions"
-  on public.funnel_submissions for select to authenticated using (true);
+  on public.salon_funnel_submissions for select to authenticated using (true);
 create policy "Staff can update submissions"
-  on public.funnel_submissions for update to authenticated using (true) with check (true);
+  on public.salon_funnel_submissions for update to authenticated using (true) with check (true);

@@ -81,7 +81,7 @@ export default function Funnel() {
       question: byId[qid]?.question ?? qid,
       answer: byId[qid]?.choices[ci]?.label ?? null,
     }))
-    await supabase.from('funnel_submissions').insert({
+    await supabase.from('salon_funnel_submissions').insert({
       name: contact.name,
       phone: contact.phone,
       answers: answerLog,
