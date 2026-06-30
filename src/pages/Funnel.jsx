@@ -5,55 +5,81 @@ import { funnelConfig } from '../data/funnel.js'
 import { useFunnel } from '../lib/useFunnel.js'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 
-const chunk = (arr, n) => {
-  const out = []
-  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n))
-  return out
-}
-
 const fmtAmount = (n) => `${Number(n).toLocaleString('en-US')}₮`
 
 export default function Funnel() {
   const { questions, loading } = useFunnel()
-  const [phase, setPhase] = useState('intro') // intro | questions | contact | payment | declined | done
-  const [qStep, setQStep] = useState(0)
-  const [answers, setAnswers] = useState({})
+  const [phase, setPhase] = useState('intro') // intro | question | contact | payment | declined | done
+  const [currentId, setCurrentId] = useState(null)
+  const [history, setHistory] = useState([]) // visited question ids (for Back)
+  const [answers, setAnswers] = useState({}) // { [questionId]: choiceIndex }
   const [contact, setContact] = useState({ name: '', phone: '' })
   const [paying, setPaying] = useState(false)
 
-  const perStep = funnelConfig.perStep || 2
-  const chunks = chunk(questions, perStep)
-  const currentChunk = chunks[qStep] || []
-  const chunkAnswered = currentChunk.every((q) => answers[q.id] != null)
-  const totalSteps = chunks.length + 1 // questions chunks + contact
+  // Active questions, sorted — `ordered` drives the sequential fallback,
+  // `byId` resolves branch jumps.
+  const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
+  const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
+  const current = byId[currentId]
 
-  function pick(qid, ci) {
-    setAnswers((a) => ({ ...a, [qid]: ci }))
+  function startFunnel() {
+    if (!ordered.length) return
+    setAnswers({})
+    setHistory([])
+    setCurrentId(ordered[0].id)
+    setPhase('question')
   }
 
-  function nextFromQuestions() {
-    if (qStep < chunks.length - 1) setQStep(qStep + 1)
-    else setPhase('contact')
-  }
-  function backFromQuestions() {
-    if (qStep > 0) setQStep(qStep - 1)
-    else setPhase('intro')
+  // Where does this choice lead?
+  function resolveNext(question, choice) {
+    if (choice.next === 'end') return null
+    if (choice.next && byId[choice.next]) return choice.next
+    const idx = ordered.findIndex((q) => q.id === question.id)
+    return ordered[idx + 1]?.id ?? null
   }
 
-  // Customer qualifies only if every question is answered with a
-  // non-disqualifying choice.
+  function pick(choiceIndex) {
+    const choice = current.choices[choiceIndex]
+    setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
+    const nextId = resolveNext(current, choice)
+    // Brief delay so the selection is visible before advancing.
+    setTimeout(() => {
+      setHistory((h) => [...h, current.id])
+      if (nextId) setCurrentId(nextId)
+      else setPhase('contact')
+    }, 220)
+  }
+
+  function back() {
+    if (phase === 'contact') {
+      // Return to the last answered question.
+      const last = history[history.length - 1]
+      if (last) { setHistory((h) => h.slice(0, -1)); setCurrentId(last); setPhase('question') }
+      else setPhase('intro')
+      return
+    }
+    if (history.length) {
+      const last = history[history.length - 1]
+      setHistory((h) => h.slice(0, -1))
+      setCurrentId(last)
+    } else {
+      setPhase('intro')
+    }
+  }
+
+  // Qualified only if every ANSWERED question used a non-disqualifying choice.
   function evaluate() {
-    return questions.every((q) => {
-      const ci = answers[q.id]
-      return ci != null && !q.choices[ci]?.disqualifies
+    return Object.entries(answers).every(([qid, ci]) => {
+      const q = byId[qid]
+      return q && !q.choices[ci]?.disqualifies
     })
   }
 
   async function saveSubmission(qualified, paymentStatus) {
     if (!supabaseConfigured) return
-    const answerLog = questions.map((q) => ({
-      question: q.question,
-      answer: q.choices[answers[q.id]]?.label ?? null,
+    const answerLog = Object.entries(answers).map(([qid, ci]) => ({
+      question: byId[qid]?.question ?? qid,
+      answer: byId[qid]?.choices[ci]?.label ?? null,
     }))
     await supabase.from('funnel_submissions').insert({
       name: contact.name,
@@ -86,13 +112,10 @@ export default function Funnel() {
   }
 
   const progress =
-    phase === 'questions'
-      ? Math.round(((qStep + 0.5) / totalSteps) * 100)
-      : phase === 'contact'
-      ? Math.round((chunks.length / totalSteps) * 100)
-      : phase === 'intro'
-      ? 0
-      : 100
+    phase === 'intro' ? 0
+    : phase === 'question' ? Math.min(95, Math.round(((history.length + 1) / (ordered.length + 1)) * 100))
+    : phase === 'contact' ? 92
+    : 100
 
   return (
     <div className="funnel">
@@ -113,34 +136,27 @@ export default function Funnel() {
             <div className="funnel__icon">✦</div>
             <h1>{funnelConfig.intro.title}</h1>
             <p className="funnel__lead">{funnelConfig.intro.text}</p>
-            <button className="btn funnel__cta" onClick={() => setPhase('questions')}>
-              {funnelConfig.intro.cta}
-            </button>
+            <button className="btn funnel__cta" onClick={startFunnel}>{funnelConfig.intro.cta}</button>
           </div>
-        ) : phase === 'questions' ? (
+        ) : phase === 'question' && current ? (
           <div className="funnel__screen">
-            {currentChunk.map((q) => (
-              <div key={q.id} className="funnel__q">
-                <h2>{q.question}</h2>
-                <div className="funnel__choices">
-                  {q.choices.map((c, ci) => (
-                    <button
-                      key={ci}
-                      className={`choice ${answers[q.id] === ci ? 'is-selected' : ''}`}
-                      onClick={() => pick(q.id, ci)}
-                    >
-                      <span className="choice__dot" />
-                      {c.label}
-                    </button>
-                  ))}
-                </div>
+            <div className="funnel__q">
+              <h2>{current.question}</h2>
+              <div className="funnel__choices">
+                {current.choices.map((c, ci) => (
+                  <button
+                    key={ci}
+                    className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
+                    onClick={() => pick(ci)}
+                  >
+                    <span className="choice__dot" />
+                    {c.label}
+                  </button>
+                ))}
               </div>
-            ))}
+            </div>
             <div className="funnel__nav">
-              <button className="btn btn--ghost btn--small" onClick={backFromQuestions}>← Буцах</button>
-              <button className="btn funnel__cta" disabled={!chunkAnswered} onClick={nextFromQuestions}>
-                Цааш →
-              </button>
+              <button className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
             </div>
           </div>
         ) : phase === 'contact' ? (
@@ -156,7 +172,7 @@ export default function Funnel() {
               <input required value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
             </label>
             <div className="funnel__nav">
-              <button type="button" className="btn btn--ghost btn--small" onClick={() => setPhase('questions')}>← Буцах</button>
+              <button type="button" className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
               <button type="submit" className="btn funnel__cta">Үргэлжлүүлэх →</button>
             </div>
           </form>
@@ -165,7 +181,6 @@ export default function Funnel() {
             <div className="funnel__badge funnel__badge--ok">✓</div>
             <h1>{funnelConfig.qualifyTitle}</h1>
             <p className="funnel__lead">{funnelConfig.qualifyText}</p>
-
             <div className="qpay">
               <div className="qpay__amount">{fmtAmount(funnelConfig.depositAmount)}</div>
               <div className="qpay__qr" aria-label="QPay QR">
@@ -175,7 +190,6 @@ export default function Funnel() {
               <p className="qpay__hint">Банкны аппаараа QR-ийг уншуулна уу</p>
               <div className="qpay__demo">Туршилтын горим — доорх товчоор төлбөрийг дуурайна</div>
             </div>
-
             <button className="btn funnel__cta" onClick={payNow} disabled={paying}>
               {paying ? 'Төлбөр шалгаж байна…' : `QPay-ээр ${fmtAmount(funnelConfig.depositAmount)} төлөх`}
             </button>

@@ -127,6 +127,8 @@ create policy "Staff can update questions"
 create policy "Staff can delete questions"
   on public.funnel_questions for delete to authenticated using (true);
 
+-- Seeded linear (no branching). Add branching per-answer in /admin > Асуулга —
+-- the admin stores each choice's `next` as the real question id.
 insert into public.funnel_questions (sort_order, question, choices) values
   (0, 'Та урьд нь манай үйлчилгээг авч байсан уу?',
       '[{"label":"Тийм, өмнө нь","disqualifies":false},{"label":"Үгүй, анх удаа","disqualifies":false}]'::jsonb),

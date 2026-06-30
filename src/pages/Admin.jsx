@@ -648,6 +648,23 @@ function FunnelPanel({ demo }) {
                   value={c.label}
                   onChange={(e) => updChoice(i, 'label', e.target.value)}
                 />
+                <label className="choice-edit__next" title="Энэ хариултыг сонгосны дараа очих асуулт">
+                  <span>→</span>
+                  <select
+                    value={c.next ?? ''}
+                    onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
+                  >
+                    <option value="">Дараагийн асуулт</option>
+                    <option value="end">Асуулга дуусгах</option>
+                    {rows
+                      .filter((r) => r.id !== editing.id)
+                      .map((r, ri) => (
+                        <option key={r.id} value={r.id}>
+                          {ri + 1}. {r.question.length > 30 ? r.question.slice(0, 30) + '…' : r.question}
+                        </option>
+                      ))}
+                  </select>
+                </label>
                 <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
                   <input
                     type="checkbox"
@@ -706,11 +723,20 @@ function FunnelPanel({ demo }) {
                 </div>
               </div>
               <div className="qcard__choices">
-                {q.choices.map((c, ci) => (
-                  <span key={ci} className={`qchoice ${c.disqualifies ? 'qchoice--bad' : ''}`}>
-                    {c.label}{c.disqualifies && ' ✕'}
-                  </span>
-                ))}
+                {q.choices.map((c, ci) => {
+                  const target =
+                    c.next === 'end' ? 'дуусгах'
+                    : c.next ? (rows.find((r) => r.id === c.next)?.question?.slice(0, 16) ?? 'асуулт')
+                    : null
+                  return (
+                    <span
+                      key={ci}
+                      className={`qchoice ${c.disqualifies ? 'qchoice--bad' : ''} ${c.next ? 'qchoice--branch' : ''}`}
+                    >
+                      {c.label}{c.disqualifies && ' ✕'}{target && ` → ${target}`}
+                    </span>
+                  )
+                })}
               </div>
             </div>
           ))}

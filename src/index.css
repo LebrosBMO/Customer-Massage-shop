@@ -273,10 +273,13 @@ code { background: var(--bg-alt); padding: 2px 6px; border-radius: 5px; color: v
 /* Admin — questionnaire (funnel) */
 .choices-edit { display: flex; flex-direction: column; gap: 8px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
 .choices-edit__title { color: var(--muted); font-size: .85rem; }
-.choice-edit { display: flex; align-items: center; gap: 10px; }
-.choice-edit > input { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; color: var(--text); font-family: inherit; }
+.choice-edit { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.choice-edit > input { flex: 1 1 160px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; color: var(--text); font-family: inherit; }
+.choice-edit__next { display: flex; align-items: center; gap: 5px; color: var(--gold-soft); font-size: .8rem; }
+.choice-edit__next select { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; color: var(--text); font-family: inherit; max-width: 160px; }
 .choice-edit__flag { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .8rem; white-space: nowrap; cursor: pointer; }
 .choice-edit__flag input { width: auto; }
+.qchoice--branch { border-color: var(--gold); color: var(--gold-soft); }
 .qlist { display: flex; flex-direction: column; gap: 12px; }
 .qcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
 .qcard__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
