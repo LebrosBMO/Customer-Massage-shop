@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 import { brand, locations } from '../data/content.js'
 import { staticServiceList } from '../lib/useServices.js'
+import { defaultQuestions } from '../data/funnel.js'
 
 const STATUSES = ['new', 'confirmed', 'done', 'cancelled']
 const STATUS_LABELS = {
@@ -171,6 +172,9 @@ function Dashboard({ demo, session }) {
         <button className={tab === 'services' ? 'is-active' : ''} onClick={() => setTab('services')}>
           Үйлчилгээ
         </button>
+        <button className={tab === 'funnel' ? 'is-active' : ''} onClick={() => setTab('funnel')}>
+          Асуулга
+        </button>
       </div>
 
       {demo && (
@@ -180,7 +184,9 @@ function Dashboard({ demo, session }) {
         </div>
       )}
 
-      {tab === 'reservations' ? <ReservationsPanel demo={demo} /> : <ServicesPanel demo={demo} />}
+      {tab === 'reservations' && <ReservationsPanel demo={demo} />}
+      {tab === 'services' && <ServicesPanel demo={demo} />}
+      {tab === 'funnel' && <FunnelPanel demo={demo} />}
     </div>
   )
 }
@@ -502,6 +508,212 @@ function ServicesPanel({ demo }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+    </>
+  )
+}
+
+const blankQuestion = () => ({
+  id: null,
+  question: '',
+  choices: [
+    { label: '', disqualifies: false },
+    { label: '', disqualifies: false },
+  ],
+  active: true,
+  sort_order: 0,
+})
+
+function FunnelPanel({ demo }) {
+  const [rows, setRows] = useState(demo ? defaultQuestions : [])
+  const [loading, setLoading] = useState(!demo)
+  const [error, setError] = useState('')
+  const [editing, setEditing] = useState(null)
+  const [saving, setSaving] = useState(false)
+
+  const load = useCallback(async () => {
+    if (demo) return
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('funnel_questions')
+      .select('*')
+      .order('sort_order', { ascending: true })
+    if (error) setError(error.message)
+    else setRows(data)
+    setLoading(false)
+  }, [demo])
+
+  useEffect(() => { load() }, [load])
+
+  function startNew() {
+    setError('')
+    setEditing({ ...blankQuestion(), sort_order: rows.length })
+  }
+  function startEdit(q) {
+    setError('')
+    setEditing({ ...q, choices: q.choices.map((c) => ({ ...c })) })
+  }
+
+  const upd = (field, value) => setEditing((s) => ({ ...s, [field]: value }))
+  const updChoice = (i, field, value) =>
+    setEditing((s) => ({
+      ...s,
+      choices: s.choices.map((c, ci) => (ci === i ? { ...c, [field]: value } : c)),
+    }))
+  const addChoice = () =>
+    setEditing((s) => ({ ...s, choices: [...s.choices, { label: '', disqualifies: false }] }))
+  const removeChoice = (i) =>
+    setEditing((s) => ({ ...s, choices: s.choices.filter((_, ci) => ci !== i) }))
+
+  async function save(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    const isNew = !editing.id
+    const payload = {
+      question: editing.question,
+      choices: editing.choices.filter((c) => c.label.trim()),
+      active: editing.active,
+      sort_order: Number(editing.sort_order) || 0,
+    }
+
+    if (demo) {
+      setRows((rs) =>
+        isNew
+          ? [...rs, { ...payload, id: crypto.randomUUID() }]
+          : rs.map((r) => (r.id === editing.id ? { ...r, ...payload } : r)),
+      )
+      setEditing(null)
+      setSaving(false)
+      return
+    }
+
+    const { error } = isNew
+      ? await supabase.from('funnel_questions').insert(payload)
+      : await supabase.from('funnel_questions').update(payload).eq('id', editing.id)
+    setSaving(false)
+    if (error) { setError(error.message); return }
+    setEditing(null)
+    load()
+  }
+
+  async function remove(q) {
+    if (!window.confirm('Энэ асуултыг устгах уу?')) return
+    if (demo) { setRows((rs) => rs.filter((r) => r.id !== q.id)); return }
+    const { error } = await supabase.from('funnel_questions').delete().eq('id', q.id)
+    if (error) setError(error.message)
+    else load()
+  }
+
+  async function toggleActive(q) {
+    const next = !q.active
+    setRows((rs) => rs.map((r) => (r.id === q.id ? { ...r, active: next } : r)))
+    if (demo) return
+    const { error } = await supabase.from('funnel_questions').update({ active: next }).eq('id', q.id)
+    if (error) { setError(error.message); load() }
+  }
+
+  return (
+    <>
+      <div className="banner banner--info">
+        Энэ нь хуваалцах холбоосны (<code>/start</code>) алхам алхмаар асуулга. Сонголтыг
+        «Тэнцэхгүй» гэж тэмдэглэвэл түүнийг сонгосон үйлчлүүлэгчид төлбөрийн цонх гарахгүй.
+      </div>
+
+      <div className="admin-toolbar">
+        <p className="admin-sub">Нийт {rows.length} асуулт</p>
+        <div className="admin-actions">
+          {!demo && <button className="btn btn--small btn--ghost" onClick={load}>Сэргээх</button>}
+          <button className="btn btn--small" onClick={startNew}>+ Асуулт нэмэх</button>
+        </div>
+      </div>
+
+      {error && <div className="banner banner--error">{error}</div>}
+
+      {editing && (
+        <form className="form svc-editor" onSubmit={save}>
+          <h3>{editing.id ? 'Асуулт засах' : 'Шинэ асуулт'}</h3>
+          <label>
+            Асуулт *
+            <input required value={editing.question} onChange={(e) => upd('question', e.target.value)} />
+          </label>
+
+          <div className="choices-edit">
+            <span className="choices-edit__title">Хариултын сонголтууд</span>
+            {editing.choices.map((c, i) => (
+              <div key={i} className="choice-edit">
+                <input
+                  placeholder={`Сонголт ${i + 1}`}
+                  value={c.label}
+                  onChange={(e) => updChoice(i, 'label', e.target.value)}
+                />
+                <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
+                  <input
+                    type="checkbox"
+                    checked={c.disqualifies}
+                    onChange={(e) => updChoice(i, 'disqualifies', e.target.checked)}
+                  />
+                  Тэнцэхгүй
+                </label>
+                <button type="button" className="link-btn link-btn--danger" onClick={() => removeChoice(i)}>✕</button>
+              </div>
+            ))}
+            <button type="button" className="link-btn" onClick={addChoice}>+ Сонголт нэмэх</button>
+          </div>
+
+          <div className="form__row">
+            <label>
+              Эрэмбэ
+              <input type="number" value={editing.sort_order} onChange={(e) => upd('sort_order', e.target.value)} />
+            </label>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={editing.active} onChange={(e) => upd('active', e.target.checked)} />
+              Идэвхтэй
+            </label>
+          </div>
+
+          <div className="admin-actions">
+            <button className="btn btn--small" type="submit" disabled={saving}>
+              {saving ? 'Хадгалж байна…' : 'Хадгалах'}
+            </button>
+            <button className="btn btn--small btn--ghost" type="button" onClick={() => setEditing(null)}>
+              Болих
+            </button>
+          </div>
+        </form>
+      )}
+
+      {loading ? (
+        <p>Ачаалж байна…</p>
+      ) : rows.length === 0 ? (
+        <p className="note">Асуулт алга. «+ Асуулт нэмэх» дарж эхлүүлээрэй.</p>
+      ) : (
+        <div className="qlist">
+          {rows.map((q, idx) => (
+            <div key={q.id} className={`qcard ${q.active ? '' : 'is-hidden-row'}`}>
+              <div className="qcard__head">
+                <strong><span className="qcard__num">{idx + 1}.</span> {q.question}</strong>
+                <div className="nowrap">
+                  <button
+                    className={`toggle ${q.active ? 'toggle--on' : ''}`}
+                    onClick={() => toggleActive(q)}
+                  >
+                    {q.active ? 'Идэвхтэй' : 'Нуусан'}
+                  </button>
+                  <button className="link-btn" onClick={() => startEdit(q)}>Засах</button>
+                  <button className="link-btn link-btn--danger" onClick={() => remove(q)}>Устгах</button>
+                </div>
+              </div>
+              <div className="qcard__choices">
+                {q.choices.map((c, ci) => (
+                  <span key={ci} className={`qchoice ${c.disqualifies ? 'qchoice--bad' : ''}`}>
+                    {c.label}{c.disqualifies && ' ✕'}
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </>

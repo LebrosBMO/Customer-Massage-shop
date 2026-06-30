@@ -8,6 +8,7 @@ import Blog from './pages/Blog.jsx'
 import Contacts from './pages/Contacts.jsx'
 import Reservation from './pages/Reservation.jsx'
 import Admin from './pages/Admin.jsx'
+import Funnel from './pages/Funnel.jsx'
 
 export default function App() {
   return (
@@ -22,6 +23,7 @@ export default function App() {
         <Route path="reservation" element={<Reservation />} />
       </Route>
       <Route path="/admin" element={<Admin />} />
+      <Route path="/start" element={<Funnel />} />
     </Routes>
   )
 }

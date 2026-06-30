@@ -270,6 +270,74 @@ code { background: var(--bg-alt); padding: 2px 6px; border-radius: 5px; color: v
 .link-btn--danger { color: #e6a3a3; }
 .link-btn--danger:hover { color: #f0bcbc; }
 
+/* Admin — questionnaire (funnel) */
+.choices-edit { display: flex; flex-direction: column; gap: 8px; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 14px; }
+.choices-edit__title { color: var(--muted); font-size: .85rem; }
+.choice-edit { display: flex; align-items: center; gap: 10px; }
+.choice-edit > input { flex: 1; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px; color: var(--text); font-family: inherit; }
+.choice-edit__flag { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .8rem; white-space: nowrap; cursor: pointer; }
+.choice-edit__flag input { width: auto; }
+.qlist { display: flex; flex-direction: column; gap: 12px; }
+.qcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; }
+.qcard__head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.qcard__num { color: var(--gold); }
+.qcard__choices { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.qchoice { font-size: .82rem; color: var(--text); background: var(--bg-alt); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; }
+.qchoice--bad { border-color: #7a3a3a; color: #e6b3b3; }
+
+/* Funnel (public step-by-step questionnaire) */
+.funnel { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; background:
+  radial-gradient(1200px 600px at 50% -10%, #241a12 0%, var(--bg) 60%); }
+.funnel__card { width: 100%; max-width: 540px; background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 26px 26px 30px; }
+.funnel__top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.funnel__brand { font-family: var(--serif); color: var(--gold-soft); font-size: 1.05rem; }
+.funnel__exit { font-size: .82rem; color: var(--muted); }
+.funnel__progress { height: 5px; background: var(--bg-alt); border-radius: 999px; overflow: hidden; margin-bottom: 26px; }
+.funnel__progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #c08a4a); transition: width .35s ease; }
+.funnel__screen { display: flex; flex-direction: column; gap: 18px; }
+.funnel__center { text-align: center; align-items: center; gap: 14px; }
+.funnel__loading { text-align: center; color: var(--muted); padding: 40px 0; }
+.funnel__icon { font-size: 2.4rem; color: var(--gold); }
+.funnel__lead { color: var(--muted); margin: 0; }
+.funnel__cta { min-width: 130px; }
+.funnel__q h2 { font-size: 1.25rem; margin-bottom: 14px; }
+.funnel__choices { display: flex; flex-direction: column; gap: 10px; }
+.choice {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  background: var(--bg-alt); border: 1px solid var(--line); border-radius: 12px;
+  padding: 15px 16px; color: var(--text); font-size: 1rem; cursor: pointer;
+  font-family: inherit; transition: border-color .15s, background .15s;
+}
+.choice:hover { border-color: var(--gold); }
+.choice__dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--line); flex: 0 0 auto; transition: all .15s; }
+.choice.is-selected { border-color: var(--gold); background: rgba(217,165,102,.1); }
+.choice.is-selected .choice__dot { border-color: var(--gold); background: var(--gold); box-shadow: inset 0 0 0 3px var(--panel); }
+.funnel__nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
+.funnel__label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: .9rem; text-align: left; }
+.funnel__label input { background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 13px; color: var(--text); font-family: inherit; font-size: 1rem; }
+.funnel__label input:focus { outline: none; border-color: var(--gold); }
+.funnel__badge { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; background: var(--bg-alt); border: 1px solid var(--line); color: var(--gold); }
+.funnel__badge--ok { border-color: #3c6b3c; color: #b7e0b7; background: rgba(96,160,96,.12); }
+
+/* Funnel — QPay payment */
+.qpay { width: 100%; background: var(--bg-alt); border: 1px solid var(--line); border-radius: 16px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.qpay__amount { font-family: var(--serif); font-size: 2rem; color: var(--gold-soft); }
+.qpay__qr { position: relative; width: 170px; height: 170px; background: #fff; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
+.qpay__qrgrid {
+  width: 130px; height: 130px;
+  background-image: repeating-linear-gradient(0deg, #111 0 8px, transparent 8px 16px),
+                    repeating-linear-gradient(90deg, #111 0 8px, transparent 8px 16px);
+  opacity: .85; border-radius: 4px;
+}
+.qpay__qrlabel { position: absolute; bottom: -22px; font-size: .72rem; color: var(--muted); }
+.qpay__hint { color: var(--muted); font-size: .85rem; margin: 14px 0 0; }
+.qpay__demo { font-size: .76rem; color: var(--gold-soft); background: rgba(217,165,102,.12); border-radius: 8px; padding: 6px 12px; }
+
+@media (max-width: 560px) {
+  .funnel__card { padding: 20px 18px 24px; border-radius: 16px; }
+  .funnel__q h2 { font-size: 1.12rem; }
+}
+
 /* Footer */
 .footer { background: #110c08; border-top: 1px solid var(--line); padding: 56px 0 0; margin-top: 0; }
 .footer__grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 36px; padding-bottom: 40px; }

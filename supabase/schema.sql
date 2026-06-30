@@ -99,3 +99,68 @@ values
   (4, 'Анхилуун үнэрт эмчилгээ', '75 мин', '180,000₮', '240,000₮', 'Таны сэтгэл санаанд тохируулан сонгосон эфирийн тосны хольц, тайвшруулах даралттай хослуулсан зан үйл.', 'https://images.unsplash.com/photo-1556760544-74068565f05c?w=800&q=70'),
   (5, 'Халуун чулуун эмчилгээ', '80 мин', '190,000₮', '260,000₮', 'Гөлгөр халуун чулуу нь булчингийн гүн хурцадлыг тайлж, бүх биед амар амгаланг авчирна.', 'https://images.unsplash.com/photo-1591343395082-e120087004b4?w=800&q=70')
 on conflict do nothing;
+
+
+-- ---------------------------------------------------------------------------
+-- Funnel questions: the step-by-step questionnaire, editable in /admin.
+-- `choices` is JSON: [{ "label": "...", "disqualifies": false }, ...]
+-- ---------------------------------------------------------------------------
+create table if not exists public.funnel_questions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  sort_order int not null default 0,
+  question text not null,
+  choices jsonb not null default '[]'::jsonb,
+  active boolean not null default true
+);
+
+alter table public.funnel_questions enable row level security;
+
+create policy "Public can read active questions"
+  on public.funnel_questions for select to anon using (active = true);
+create policy "Staff can read all questions"
+  on public.funnel_questions for select to authenticated using (true);
+create policy "Staff can insert questions"
+  on public.funnel_questions for insert to authenticated with check (true);
+create policy "Staff can update questions"
+  on public.funnel_questions for update to authenticated using (true) with check (true);
+create policy "Staff can delete questions"
+  on public.funnel_questions for delete to authenticated using (true);
+
+insert into public.funnel_questions (sort_order, question, choices) values
+  (0, 'Та урьд нь манай үйлчилгээг авч байсан уу?',
+      '[{"label":"Тийм, өмнө нь","disqualifies":false},{"label":"Үгүй, анх удаа","disqualifies":false}]'::jsonb),
+  (1, 'Таны нас?',
+      '[{"label":"18-аас доош","disqualifies":true},{"label":"18 – 25","disqualifies":false},{"label":"26 – 40","disqualifies":false},{"label":"40-өөс дээш","disqualifies":false}]'::jsonb),
+  (2, 'Ямар үйлчилгээ сонирхож байна?',
+      '[{"label":"Сонгодог тайвшруулах","disqualifies":false},{"label":"Тантрик массаж","disqualifies":false},{"label":"Хосуудын массаж","disqualifies":false},{"label":"Бусад / Мэдэхгүй","disqualifies":false}]'::jsonb),
+  (3, 'Хэзээ зочлохыг хүсэж байна?',
+      '[{"label":"Өнөөдөр","disqualifies":false},{"label":"Энэ долоо хоногт","disqualifies":false},{"label":"Дараа нь төлөвлөж байна","disqualifies":false}]'::jsonb),
+  (4, 'Захиалгаа баталгаажуулахын тулд бага хэмжээний урьдчилгаа төлөхөд бэлэн үү?',
+      '[{"label":"Тийм, бэлэн","disqualifies":false},{"label":"Үгүй","disqualifies":true}]'::jsonb)
+on conflict do nothing;
+
+
+-- ---------------------------------------------------------------------------
+-- Funnel submissions: a completed questionnaire (with answers + contact).
+-- ---------------------------------------------------------------------------
+create table if not exists public.funnel_submissions (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  name text,
+  phone text,
+  answers jsonb,
+  qualified boolean,
+  payment_status text not null default 'pending',
+  amount int
+);
+
+alter table public.funnel_submissions enable row level security;
+
+-- Anyone can submit; only staff can read/manage.
+create policy "Public can create submissions"
+  on public.funnel_submissions for insert to anon with check (true);
+create policy "Staff can read submissions"
+  on public.funnel_submissions for select to authenticated using (true);
+create policy "Staff can update submissions"
+  on public.funnel_submissions for update to authenticated using (true) with check (true);
