@@ -673,40 +673,49 @@ function FunnelPanel({ demo }) {
             <div className="choices-edit">
               <span className="choices-edit__title">Хариултын сонголтууд</span>
               {editing.choices.map((c, i) => (
-                <div key={i} className="choice-edit">
-                  <input
-                    placeholder={`Сонголт ${i + 1}`}
-                    value={c.label}
-                    onChange={(e) => updChoice(i, 'label', e.target.value)}
-                  />
-                  {editing.type === 'single' && (
-                    <label className="choice-edit__next" title="Энэ хариултыг сонгосны дараа очих асуулт">
-                      <span>→</span>
-                      <select
-                        value={c.next ?? ''}
-                        onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
-                      >
-                        <option value="">Дараагийн асуулт</option>
-                        <option value="end">Асуулга дуусгах</option>
-                        {rows
-                          .filter((r) => r.id !== editing.id)
-                          .map((r, ri) => (
-                            <option key={r.id} value={r.id}>
-                              {ri + 1}. {r.question.length > 30 ? r.question.slice(0, 30) + '…' : r.question}
-                            </option>
-                          ))}
-                      </select>
-                    </label>
-                  )}
-                  <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
+                <div key={i} className="choice-edit-wrap">
+                  <div className="choice-edit">
                     <input
-                      type="checkbox"
-                      checked={c.disqualifies}
-                      onChange={(e) => updChoice(i, 'disqualifies', e.target.checked)}
+                      placeholder={`Сонголт ${i + 1}`}
+                      value={c.label}
+                      onChange={(e) => updChoice(i, 'label', e.target.value)}
                     />
-                    Тэнцэхгүй
-                  </label>
-                  <button type="button" className="link-btn link-btn--danger" onClick={() => removeChoice(i)}>✕</button>
+                    {editing.type === 'single' && (
+                      <label className="choice-edit__next" title="Энэ хариултыг сонгосны дараа очих асуулт">
+                        <span>→</span>
+                        <select
+                          value={c.next ?? ''}
+                          onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
+                        >
+                          <option value="">Дараагийн асуулт</option>
+                          <option value="end">Асуулга дуусгах</option>
+                          {rows
+                            .filter((r) => r.id !== editing.id)
+                            .map((r, ri) => (
+                              <option key={r.id} value={r.id}>
+                                {ri + 1}. {r.question.length > 30 ? r.question.slice(0, 30) + '…' : r.question}
+                              </option>
+                            ))}
+                        </select>
+                      </label>
+                    )}
+                    <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
+                      <input
+                        type="checkbox"
+                        checked={c.disqualifies}
+                        onChange={(e) => updChoice(i, 'disqualifies', e.target.checked)}
+                      />
+                      Тэнцэхгүй
+                    </label>
+                    <button type="button" className="link-btn link-btn--danger" onClick={() => removeChoice(i)}>✕</button>
+                  </div>
+                  <textarea
+                    className="choice-explain"
+                    rows={2}
+                    placeholder="Тайлбар (заавал биш) — энэ хариултыг сонгоход үйлчлүүлэгчид харагдана"
+                    value={c.explain || ''}
+                    onChange={(e) => updChoice(i, 'explain', e.target.value)}
+                  />
                 </div>
               ))}
               <button type="button" className="link-btn" onClick={addChoice}>+ Сонголт нэмэх</button>

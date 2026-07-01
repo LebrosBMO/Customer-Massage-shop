@@ -40,15 +40,24 @@ export default function Funnel() {
     return ordered[idx + 1]?.id ?? null
   }
 
-  // Single-choice: select and auto-advance (supports per-choice branching).
+  function computeNext(choice) {
+    if (choice.next === 'end') return null
+    if (choice.next && byId[choice.next]) return choice.next
+    return sequentialNextId()
+  }
+
+  // Single-choice: select then auto-advance — UNLESS the choice has an
+  // explanation, in which case pause and show it with a Continue button.
   function pickSingle(choiceIndex) {
     const choice = current.choices[choiceIndex]
     setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
-    let nextId
-    if (choice.next === 'end') nextId = null
-    else if (choice.next && byId[choice.next]) nextId = choice.next
-    else nextId = sequentialNextId()
-    setTimeout(() => goTo(nextId), 220)
+    if (choice.explain && choice.explain.trim()) return
+    setTimeout(() => goTo(computeNext(choice)), 220)
+  }
+
+  function continueSingle() {
+    const ci = answers[current.id]
+    goTo(computeNext(current.choices[ci]))
   }
 
   function toggleMulti(choiceIndex) {
@@ -94,6 +103,10 @@ export default function Funnel() {
     return v != null
   })()
   const canAdvance = !current?.required || answered
+
+  // For single-choice: the selected choice and whether it has an explanation.
+  const selChoice = qtype === 'single' && answers[current?.id] != null ? current.choices[answers[current.id]] : null
+  const selHasExplain = !!(selChoice && selChoice.explain && selChoice.explain.trim())
 
   // Qualified only if every answered choice-question used a valid choice.
   function evaluate() {
@@ -188,6 +201,10 @@ export default function Funnel() {
                 </div>
               )}
 
+              {qtype === 'single' && selHasExplain && (
+                <div className="funnel__explain">{selChoice.explain}</div>
+              )}
+
               {qtype === 'multi' && (
                 <div className="funnel__choices">
                   {current.choices.map((c, ci) => {
@@ -221,6 +238,11 @@ export default function Funnel() {
               {qtype !== 'single' && (
                 <button className="btn funnel__cta" disabled={!canAdvance} onClick={advanceSequential}>
                   Цааш →
+                </button>
+              )}
+              {qtype === 'single' && selHasExplain && (
+                <button className="btn funnel__cta" onClick={continueSingle}>
+                  Үргэлжлүүлэх →
                 </button>
               )}
             </div>

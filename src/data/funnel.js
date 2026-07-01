@@ -65,9 +65,9 @@ export const defaultQuestions = [
     required: true,
     question: 'Ямар үйлчилгээ сонирхож байна?',
     choices: [
-      { label: 'Сонгодог тайвшруулах', disqualifies: false },
-      { label: 'Тантрик массаж', disqualifies: false },
-      { label: 'Хосуудын массаж', disqualifies: false, next: 'q-people' },
+      { label: 'Сонгодог тайвшруулах', disqualifies: false, explain: 'Бүх биеийг хамарсан, дулаахан тосоор хийх сонгодог массаж. Булчингийн хурцадлыг тайлж, гүн амралт өгнө. Үргэлжлэх хугацаа: 60–90 мин.' },
+      { label: 'Тантрик массаж', disqualifies: false, explain: 'Амьсгал, мэдрэхүйд төвлөрсөн удаан, ухамсартай зан үйл. Бие сэтгэлийг гүнзгий тайвшруулна. Үргэлжлэх хугацаа: 90 мин.' },
+      { label: 'Хосуудын массаж', disqualifies: false, next: 'q-people', explain: 'Хоёр хүнд зэрэг, хажуу хажуугаа хийх дотно, тайван зан үйл. Хамтдаа амрах төгс сонголт.' },
       { label: 'Бусад / Мэдэхгүй', disqualifies: false },
     ],
   },
