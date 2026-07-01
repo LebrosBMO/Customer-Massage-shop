@@ -40,7 +40,8 @@ export const defaultQuestions = [
     question: 'Та урьд нь манай үйлчилгээг авч байсан уу?',
     choices: [
       { label: 'Тийм, өмнө нь', disqualifies: false },
-      { label: 'Үгүй, анх удаа', disqualifies: false },
+      // Жишээ: энэ хариултыг сонговол шууд цаг сонгож, урьдчилгаа төлнө.
+      { label: 'Үгүй, анх удаа', disqualifies: false, next: 'pay' },
     ],
   },
   {

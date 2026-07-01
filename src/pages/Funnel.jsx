@@ -13,7 +13,8 @@ export default function Funnel() {
   const [currentId, setCurrentId] = useState(null)
   const [history, setHistory] = useState([])
   const [answers, setAnswers] = useState({}) // single: index | multi: [indexes] | text: string
-  const [contact, setContact] = useState({ name: '', phone: '' })
+  const [contact, setContact] = useState({ name: '', phone: '', date: '', time: '' })
+  const [forcePay, setForcePay] = useState(false)
   const [paying, setPaying] = useState(false)
 
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
@@ -46,18 +47,29 @@ export default function Funnel() {
     return sequentialNextId()
   }
 
+  // Advance after a single choice. A choice with next==='pay' jumps straight
+  // to the booking + prepayment step, skipping the remaining questions.
+  function advanceForChoice(choice) {
+    if (choice.next === 'pay') {
+      setForcePay(true)
+      setHistory((h) => [...h, current.id])
+      setPhase('contact')
+      return
+    }
+    goTo(computeNext(choice))
+  }
+
   // Single-choice: select then auto-advance — UNLESS the choice has an
   // explanation, in which case pause and show it with a Continue button.
   function pickSingle(choiceIndex) {
     const choice = current.choices[choiceIndex]
     setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
     if (choice.explain && choice.explain.trim()) return
-    setTimeout(() => goTo(computeNext(choice)), 220)
+    setTimeout(() => advanceForChoice(choice), 220)
   }
 
   function continueSingle() {
-    const ci = answers[current.id]
-    goTo(computeNext(current.choices[ci]))
+    advanceForChoice(current.choices[answers[current.id]])
   }
 
   function toggleMulti(choiceIndex) {
@@ -131,6 +143,10 @@ export default function Funnel() {
       else answer = val || null
       return { question: q?.question ?? qid, answer }
     })
+    // Record the chosen booking time alongside the answers.
+    if (contact.date || contact.time) {
+      answerLog.push({ question: 'Захиалсан цаг', answer: `${contact.date || ''} ${contact.time || ''}`.trim() })
+    }
     await supabase.from('salon_funnel_submissions').insert({
       name: contact.name,
       phone: contact.phone,
@@ -143,7 +159,8 @@ export default function Funnel() {
 
   function submitContact(e) {
     e.preventDefault()
-    if (evaluate()) setPhase('payment')
+    // forcePay answers go straight to prepayment; otherwise qualify normally.
+    if (forcePay || evaluate()) setPhase('payment')
     else { saveSubmission(false, 'n/a'); setPhase('declined') }
   }
 
@@ -249,8 +266,8 @@ export default function Funnel() {
           </div>
         ) : phase === 'contact' ? (
           <form className="funnel__screen" onSubmit={submitContact}>
-            <h2>Холбоо барих мэдээлэл</h2>
-            <p className="funnel__lead">Захиалгаа баталгаажуулахын тулд нэр, утсаа үлдээнэ үү.</p>
+            <h2>Цаг сонгож, мэдээллээ үлдээнэ үү</h2>
+            <p className="funnel__lead">Захиалгаа баталгаажуулахын тулд нэр, утас, зочлох цагаа сонгоно уу.</p>
             <label className="funnel__label">
               Нэр
               <input required value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
@@ -259,6 +276,16 @@ export default function Funnel() {
               Утас
               <input required value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
             </label>
+            <div className="funnel__row">
+              <label className="funnel__label">
+                Өдөр
+                <input type="date" required value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value })} />
+              </label>
+              <label className="funnel__label">
+                Цаг
+                <input type="time" required value={contact.time} onChange={(e) => setContact({ ...contact, time: e.target.value })} />
+              </label>
+            </div>
             <div className="funnel__nav">
               <button type="button" className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
               <button type="submit" className="btn funnel__cta">Үргэлжлүүлэх →</button>

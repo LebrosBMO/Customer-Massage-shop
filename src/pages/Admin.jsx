@@ -688,6 +688,7 @@ function FunnelPanel({ demo }) {
                           onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
                         >
                           <option value="">Дараагийн асуулт</option>
+                          <option value="pay">Цаг сонгож, төлбөр төлүүлэх</option>
                           <option value="end">Асуулга дуусгах</option>
                           {rows
                             .filter((r) => r.id !== editing.id)
@@ -773,6 +774,7 @@ function FunnelPanel({ demo }) {
                 {q.choices.map((c, ci) => {
                   const target =
                     c.next === 'end' ? 'дуусгах'
+                    : c.next === 'pay' ? 'төлбөр'
                     : c.next ? (rows.find((r) => r.id === c.next)?.question?.slice(0, 16) ?? 'асуулт')
                     : null
                   return (
