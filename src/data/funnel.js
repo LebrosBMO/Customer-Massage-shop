@@ -2,13 +2,17 @@
 // Алхам алхмаар, салаалсан (branching) асуулгын тохиргоо ба анхдагч асуултууд.
 // Асуултуудыг админ хэсгээс засна. Эдгээр нь зөвхөн туршилтын/нөөц өгөгдөл.
 //
-// Сонголт бүрд:
-//   label       — харагдах текст
+// Асуулт бүрд:
+//   type      — 'single' (нэг сонголт) | 'multi' (олон сонголт) | 'text' (бичих)
+//   required  — true бол хариулахгүйгээр цааш явж болохгүй
+//   choices   — [{ label, disqualifies, next }]  (single/multi-д хэрэглэнэ)
+//
+// Сонголтын талбарууд:
 //   disqualifies — true бол сонгосон үед төлбөрийн цонх гарахгүй
-//   next        — дараа нь очих асуулт:
-//                   undefined/null = дараалсан дараагийн асуулт
-//                   асуултын id     = тухайн асуулт руу үсрэх (салаа)
-//                   'end'           = асуулгыг дуусгах (холбоо барих → төлбөр)
+//   next         — дараа нь очих асуулт (зөвхөн single):
+//                    undefined = дараалсан дараагийн асуулт
+//                    асуултын id = тухайн асуулт руу үсрэх (салаа)
+//                    'end' = асуулгыг дуусгах
 // ---------------------------------------------------------------------------
 
 export const funnelConfig = {
@@ -31,6 +35,8 @@ export const defaultQuestions = [
     id: 'q-before',
     sort_order: 0,
     active: true,
+    type: 'single',
+    required: true,
     question: 'Та урьд нь манай үйлчилгээг авч байсан уу?',
     choices: [
       { label: 'Тийм, өмнө нь', disqualifies: false },
@@ -41,6 +47,8 @@ export const defaultQuestions = [
     id: 'q-age',
     sort_order: 1,
     active: true,
+    type: 'single',
+    required: true,
     question: 'Таны нас?',
     choices: [
       { label: '18-аас доош', disqualifies: true },
@@ -53,19 +61,37 @@ export const defaultQuestions = [
     id: 'q-service',
     sort_order: 2,
     active: true,
+    type: 'single',
+    required: true,
     question: 'Ямар үйлчилгээ сонирхож байна?',
     choices: [
       { label: 'Сонгодог тайвшруулах', disqualifies: false },
       { label: 'Тантрик массаж', disqualifies: false },
-      // Салаа: хосуудын массаж сонговол "хэдүүлээ" гэдгийг асууна.
       { label: 'Хосуудын массаж', disqualifies: false, next: 'q-people' },
       { label: 'Бусад / Мэдэхгүй', disqualifies: false },
     ],
   },
   {
-    id: 'q-when',
+    // ОЛОН СОНГОЛТ (multi) — олон хайрцаг тэмдэглэж болно.
+    id: 'q-goals',
     sort_order: 3,
     active: true,
+    type: 'multi',
+    required: false,
+    question: 'Юунд илүү анхаарах вэ? (хэдийг ч сонгож болно)',
+    choices: [
+      { label: 'Стресс тайлах', disqualifies: false },
+      { label: 'Булчин сулруулах', disqualifies: false },
+      { label: 'Гүн амралт', disqualifies: false },
+      { label: 'Дотно уур амьсгал', disqualifies: false },
+    ],
+  },
+  {
+    id: 'q-when',
+    sort_order: 4,
+    active: true,
+    type: 'single',
+    required: true,
     question: 'Хэзээ зочлохыг хүсэж байна?',
     choices: [
       { label: 'Өнөөдөр', disqualifies: false },
@@ -74,9 +100,21 @@ export const defaultQuestions = [
     ],
   },
   {
-    id: 'q-deposit',
-    sort_order: 4,
+    // ТЕКСТ БИЧИХ (text) — чөлөөт бичвэр.
+    id: 'q-note',
+    sort_order: 5,
     active: true,
+    type: 'text',
+    required: false,
+    question: 'Нэмэлт хүсэлт эсвэл тэмдэглэл байвал бичнэ үү (заавал биш).',
+    choices: [],
+  },
+  {
+    id: 'q-deposit',
+    sort_order: 6,
+    active: true,
+    type: 'single',
+    required: true,
     question: 'Захиалгаа баталгаажуулахын тулд бага хэмжээний урьдчилгаа төлөхөд бэлэн үү?',
     choices: [
       { label: 'Тийм, бэлэн', disqualifies: false, next: 'end' },
@@ -84,14 +122,15 @@ export const defaultQuestions = [
     ],
   },
   {
-    // Зөвхөн "Хосуудын массаж" сонгосон үед энэ асуулт гарна, дараа нь q-when руу.
     id: 'q-people',
-    sort_order: 5,
+    sort_order: 7,
     active: true,
+    type: 'single',
+    required: true,
     question: 'Та хэдүүлээ ирэх вэ?',
     choices: [
-      { label: '2 хүн', disqualifies: false, next: 'q-when' },
-      { label: '3-аас дээш', disqualifies: false, next: 'q-when' },
+      { label: '2 хүн', disqualifies: false, next: 'q-goals' },
+      { label: '3-аас дээш', disqualifies: false, next: 'q-goals' },
     ],
   },
 ]

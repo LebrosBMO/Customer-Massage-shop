@@ -11,16 +11,15 @@ export default function Funnel() {
   const { questions, loading } = useFunnel()
   const [phase, setPhase] = useState('intro') // intro | question | contact | payment | declined | done
   const [currentId, setCurrentId] = useState(null)
-  const [history, setHistory] = useState([]) // visited question ids (for Back)
-  const [answers, setAnswers] = useState({}) // { [questionId]: choiceIndex }
+  const [history, setHistory] = useState([])
+  const [answers, setAnswers] = useState({}) // single: index | multi: [indexes] | text: string
   const [contact, setContact] = useState({ name: '', phone: '' })
   const [paying, setPaying] = useState(false)
 
-  // Active questions, sorted — `ordered` drives the sequential fallback,
-  // `byId` resolves branch jumps.
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
   const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
   const current = byId[currentId]
+  const qtype = current?.type || 'single'
 
   function startFunnel() {
     if (!ordered.length) return
@@ -30,29 +29,49 @@ export default function Funnel() {
     setPhase('question')
   }
 
-  // Where does this choice lead?
-  function resolveNext(question, choice) {
-    if (choice.next === 'end') return null
-    if (choice.next && byId[choice.next]) return choice.next
-    const idx = ordered.findIndex((q) => q.id === question.id)
+  function goTo(nextId) {
+    setHistory((h) => [...h, current.id])
+    if (nextId) setCurrentId(nextId)
+    else setPhase('contact')
+  }
+
+  function sequentialNextId() {
+    const idx = ordered.findIndex((q) => q.id === current.id)
     return ordered[idx + 1]?.id ?? null
   }
 
-  function pick(choiceIndex) {
+  // Single-choice: select and auto-advance (supports per-choice branching).
+  function pickSingle(choiceIndex) {
     const choice = current.choices[choiceIndex]
     setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
-    const nextId = resolveNext(current, choice)
-    // Brief delay so the selection is visible before advancing.
-    setTimeout(() => {
-      setHistory((h) => [...h, current.id])
-      if (nextId) setCurrentId(nextId)
-      else setPhase('contact')
-    }, 220)
+    let nextId
+    if (choice.next === 'end') nextId = null
+    else if (choice.next && byId[choice.next]) nextId = choice.next
+    else nextId = sequentialNextId()
+    setTimeout(() => goTo(nextId), 220)
+  }
+
+  function toggleMulti(choiceIndex) {
+    setAnswers((a) => {
+      const cur = Array.isArray(a[current.id]) ? a[current.id] : []
+      const next = cur.includes(choiceIndex)
+        ? cur.filter((x) => x !== choiceIndex)
+        : [...cur, choiceIndex]
+      return { ...a, [current.id]: next }
+    })
+  }
+
+  function setText(value) {
+    setAnswers((a) => ({ ...a, [current.id]: value }))
+  }
+
+  // Next button for multi/text questions.
+  function advanceSequential() {
+    goTo(sequentialNextId())
   }
 
   function back() {
     if (phase === 'contact') {
-      // Return to the last answered question.
       const last = history[history.length - 1]
       if (last) { setHistory((h) => h.slice(0, -1)); setCurrentId(last); setPhase('question') }
       else setPhase('intro')
@@ -67,20 +86,38 @@ export default function Funnel() {
     }
   }
 
-  // Qualified only if every ANSWERED question used a non-disqualifying choice.
+  // Has the current question been answered (for the required check)?
+  const answered = (() => {
+    const v = answers[current?.id]
+    if (qtype === 'multi') return Array.isArray(v) && v.length > 0
+    if (qtype === 'text') return typeof v === 'string' && v.trim().length > 0
+    return v != null
+  })()
+  const canAdvance = !current?.required || answered
+
+  // Qualified only if every answered choice-question used a valid choice.
   function evaluate() {
-    return Object.entries(answers).every(([qid, ci]) => {
+    return Object.entries(answers).every(([qid, val]) => {
       const q = byId[qid]
-      return q && !q.choices[ci]?.disqualifies
+      if (!q) return true
+      const t = q.type || 'single'
+      if (t === 'single') return !q.choices[val]?.disqualifies
+      if (t === 'multi') return !(Array.isArray(val) && val.some((i) => q.choices[i]?.disqualifies))
+      return true // text never disqualifies
     })
   }
 
   async function saveSubmission(qualified, paymentStatus) {
     if (!supabaseConfigured) return
-    const answerLog = Object.entries(answers).map(([qid, ci]) => ({
-      question: byId[qid]?.question ?? qid,
-      answer: byId[qid]?.choices[ci]?.label ?? null,
-    }))
+    const answerLog = Object.entries(answers).map(([qid, val]) => {
+      const q = byId[qid]
+      const t = q?.type || 'single'
+      let answer
+      if (t === 'single') answer = q?.choices[val]?.label ?? null
+      else if (t === 'multi') answer = (Array.isArray(val) ? val.map((i) => q.choices[i]?.label).filter(Boolean) : []).join(', ')
+      else answer = val || null
+      return { question: q?.question ?? qid, answer }
+    })
     await supabase.from('salon_funnel_submissions').insert({
       name: contact.name,
       phone: contact.phone,
@@ -93,18 +130,12 @@ export default function Funnel() {
 
   function submitContact(e) {
     e.preventDefault()
-    if (evaluate()) {
-      setPhase('payment')
-    } else {
-      saveSubmission(false, 'n/a')
-      setPhase('declined')
-    }
+    if (evaluate()) setPhase('payment')
+    else { saveSubmission(false, 'n/a'); setPhase('declined') }
   }
 
   async function payNow() {
     setPaying(true)
-    // MOCK QPay — simulates a successful payment. Replace with a real QPay
-    // invoice + status check once merchant credentials are connected.
     await new Promise((r) => setTimeout(r, 1300))
     await saveSubmission(true, 'paid')
     setPaying(false)
@@ -141,22 +172,57 @@ export default function Funnel() {
         ) : phase === 'question' && current ? (
           <div className="funnel__screen">
             <div className="funnel__q">
-              <h2>{current.question}</h2>
-              <div className="funnel__choices">
-                {current.choices.map((c, ci) => (
-                  <button
-                    key={ci}
-                    className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
-                    onClick={() => pick(ci)}
-                  >
-                    <span className="choice__dot" />
-                    {c.label}
-                  </button>
-                ))}
-              </div>
+              <h2>{current.question}{current.required && <span className="funnel__req"> *</span>}</h2>
+
+              {qtype === 'single' && (
+                <div className="funnel__choices">
+                  {current.choices.map((c, ci) => (
+                    <button
+                      key={ci}
+                      className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
+                      onClick={() => pickSingle(ci)}
+                    >
+                      <span className="choice__dot" />{c.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {qtype === 'multi' && (
+                <div className="funnel__choices">
+                  {current.choices.map((c, ci) => {
+                    const sel = Array.isArray(answers[current.id]) && answers[current.id].includes(ci)
+                    return (
+                      <button
+                        key={ci}
+                        className={`choice ${sel ? 'is-selected' : ''}`}
+                        onClick={() => toggleMulti(ci)}
+                      >
+                        <span className="choice__box">{sel && '✓'}</span>{c.label}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+
+              {qtype === 'text' && (
+                <textarea
+                  className="funnel__text"
+                  rows={4}
+                  value={answers[current.id] || ''}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Энд бичнэ үү…"
+                />
+              )}
             </div>
+
             <div className="funnel__nav">
               <button className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
+              {qtype !== 'single' && (
+                <button className="btn funnel__cta" disabled={!canAdvance} onClick={advanceSequential}>
+                  Цааш →
+                </button>
+              )}
             </div>
           </div>
         ) : phase === 'contact' ? (

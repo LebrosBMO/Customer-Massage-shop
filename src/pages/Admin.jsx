@@ -517,6 +517,8 @@ function ServicesPanel({ demo }) {
 const blankQuestion = () => ({
   id: null,
   question: '',
+  type: 'single',
+  required: true,
   choices: [
     { label: '', disqualifies: false },
     { label: '', disqualifies: false },
@@ -524,6 +526,12 @@ const blankQuestion = () => ({
   active: true,
   sort_order: 0,
 })
+
+const QTYPES = [
+  { v: 'single', label: 'Нэг сонголт' },
+  { v: 'multi', label: 'Олон сонголт' },
+  { v: 'text', label: 'Текст бичих' },
+]
 
 function FunnelPanel({ demo }) {
   const [rows, setRows] = useState(demo ? defaultQuestions : [])
@@ -552,7 +560,12 @@ function FunnelPanel({ demo }) {
   }
   function startEdit(q) {
     setError('')
-    setEditing({ ...q, choices: q.choices.map((c) => ({ ...c })) })
+    setEditing({
+      ...q,
+      type: q.type || 'single',
+      required: q.required ?? false,
+      choices: (q.choices || []).map((c) => ({ ...c })),
+    })
   }
 
   const upd = (field, value) => setEditing((s) => ({ ...s, [field]: value }))
@@ -573,7 +586,9 @@ function FunnelPanel({ demo }) {
     const isNew = !editing.id
     const payload = {
       question: editing.question,
-      choices: editing.choices.filter((c) => c.label.trim()),
+      type: editing.type || 'single',
+      required: !!editing.required,
+      choices: editing.type === 'text' ? [] : editing.choices.filter((c) => c.label.trim()),
       active: editing.active,
       sort_order: Number(editing.sort_order) || 0,
     }
@@ -639,45 +654,64 @@ function FunnelPanel({ demo }) {
             <input required value={editing.question} onChange={(e) => upd('question', e.target.value)} />
           </label>
 
-          <div className="choices-edit">
-            <span className="choices-edit__title">Хариултын сонголтууд</span>
-            {editing.choices.map((c, i) => (
-              <div key={i} className="choice-edit">
-                <input
-                  placeholder={`Сонголт ${i + 1}`}
-                  value={c.label}
-                  onChange={(e) => updChoice(i, 'label', e.target.value)}
-                />
-                <label className="choice-edit__next" title="Энэ хариултыг сонгосны дараа очих асуулт">
-                  <span>→</span>
-                  <select
-                    value={c.next ?? ''}
-                    onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
-                  >
-                    <option value="">Дараагийн асуулт</option>
-                    <option value="end">Асуулга дуусгах</option>
-                    {rows
-                      .filter((r) => r.id !== editing.id)
-                      .map((r, ri) => (
-                        <option key={r.id} value={r.id}>
-                          {ri + 1}. {r.question.length > 30 ? r.question.slice(0, 30) + '…' : r.question}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
-                  <input
-                    type="checkbox"
-                    checked={c.disqualifies}
-                    onChange={(e) => updChoice(i, 'disqualifies', e.target.checked)}
-                  />
-                  Тэнцэхгүй
-                </label>
-                <button type="button" className="link-btn link-btn--danger" onClick={() => removeChoice(i)}>✕</button>
-              </div>
-            ))}
-            <button type="button" className="link-btn" onClick={addChoice}>+ Сонголт нэмэх</button>
+          <div className="form__row">
+            <label>
+              Хариултын төрөл
+              <select value={editing.type} onChange={(e) => upd('type', e.target.value)}>
+                {QTYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+              </select>
+            </label>
+            <label className="checkbox-row">
+              <input type="checkbox" checked={editing.required} onChange={(e) => upd('required', e.target.checked)} />
+              Заавал хариулах
+            </label>
           </div>
+
+          {editing.type === 'text' ? (
+            <p className="note">Үйлчлүүлэгч чөлөөт текст бичнэ — сонголт нэмэх шаардлагагүй.</p>
+          ) : (
+            <div className="choices-edit">
+              <span className="choices-edit__title">Хариултын сонголтууд</span>
+              {editing.choices.map((c, i) => (
+                <div key={i} className="choice-edit">
+                  <input
+                    placeholder={`Сонголт ${i + 1}`}
+                    value={c.label}
+                    onChange={(e) => updChoice(i, 'label', e.target.value)}
+                  />
+                  {editing.type === 'single' && (
+                    <label className="choice-edit__next" title="Энэ хариултыг сонгосны дараа очих асуулт">
+                      <span>→</span>
+                      <select
+                        value={c.next ?? ''}
+                        onChange={(e) => updChoice(i, 'next', e.target.value || undefined)}
+                      >
+                        <option value="">Дараагийн асуулт</option>
+                        <option value="end">Асуулга дуусгах</option>
+                        {rows
+                          .filter((r) => r.id !== editing.id)
+                          .map((r, ri) => (
+                            <option key={r.id} value={r.id}>
+                              {ri + 1}. {r.question.length > 30 ? r.question.slice(0, 30) + '…' : r.question}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  )}
+                  <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
+                    <input
+                      type="checkbox"
+                      checked={c.disqualifies}
+                      onChange={(e) => updChoice(i, 'disqualifies', e.target.checked)}
+                    />
+                    Тэнцэхгүй
+                  </label>
+                  <button type="button" className="link-btn link-btn--danger" onClick={() => removeChoice(i)}>✕</button>
+                </div>
+              ))}
+              <button type="button" className="link-btn" onClick={addChoice}>+ Сонголт нэмэх</button>
+            </div>
+          )}
 
           <div className="form__row">
             <label>
@@ -710,7 +744,11 @@ function FunnelPanel({ demo }) {
           {rows.map((q, idx) => (
             <div key={q.id} className={`qcard ${q.active ? '' : 'is-hidden-row'}`}>
               <div className="qcard__head">
-                <strong><span className="qcard__num">{idx + 1}.</span> {q.question}</strong>
+                <strong>
+                  <span className="qcard__num">{idx + 1}.</span> {q.question}
+                  {q.required && <span className="funnel__req"> *</span>}
+                  <span className="qtype-badge">{(QTYPES.find((t) => t.v === (q.type || 'single')) || {}).label}</span>
+                </strong>
                 <div className="nowrap">
                   <button
                     className={`toggle ${q.active ? 'toggle--on' : ''}`}

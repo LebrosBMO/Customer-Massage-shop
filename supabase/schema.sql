@@ -110,9 +110,15 @@ create table if not exists public.salon_funnel_questions (
   created_at timestamptz not null default now(),
   sort_order int not null default 0,
   question text not null,
+  type text not null default 'single',   -- 'single' | 'multi' | 'text'
+  required boolean not null default false,
   choices jsonb not null default '[]'::jsonb,
   active boolean not null default true
 );
+
+-- If the table already existed, make sure the new columns are present.
+alter table public.salon_funnel_questions add column if not exists type text not null default 'single';
+alter table public.salon_funnel_questions add column if not exists required boolean not null default false;
 
 alter table public.salon_funnel_questions enable row level security;
 
