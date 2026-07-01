@@ -17,6 +17,9 @@
 
 export const funnelConfig = {
   depositAmount: 10000,
+  // Ажиллах цаг ба цагийн хуваарь. Үйлчилгээ = serviceMin, завсарлага = gapMin.
+  // Эхлэх боломжит цагууд эндээс автоматаар тооцоологдоно.
+  booking: { open: '12:00', close: '22:00', serviceMin: 60, gapMin: 30 },
   intro: {
     title: 'Хувийн зөвлөгөө',
     text: 'Танд хамгийн тохирох үйлчилгээг санал болгохын тулд хэдэн товч асуултад хариулна уу. Ердөө 1 минут зарцуулна.',
@@ -28,6 +31,20 @@ export const funnelConfig = {
   declineText: 'Уучлаарай, таны хариулт одоогийн нөхцөлд бүрэн тохирохгүй байна. Бид тантай удахгүй холбогдох болно.',
   doneTitle: 'Захиалга баталгаажлаа',
   doneText: 'Таны урьдчилгаа төлбөрийг хүлээн авлаа. Бид удахгүй тантай холбогдоно. Баярлалаа!',
+}
+
+// Ажиллах цагаас эхлэх боломжит цагуудыг тооцоолно.
+// Жишээ 12:00–22:00, үйлчилгээ 60 мин, завсар 30 мин → 12:00, 13:30, ... 21:00
+export function bookingSlots(cfg = funnelConfig.booking) {
+  const toMin = (t) => { const [h, m] = t.split(':').map(Number); return h * 60 + m }
+  const pad = (n) => String(n).padStart(2, '0')
+  const fmt = (mins) => `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}`
+  const start = toMin(cfg.open)
+  const end = toMin(cfg.close)
+  const step = cfg.serviceMin + cfg.gapMin
+  const out = []
+  for (let t = start; t + cfg.serviceMin <= end; t += step) out.push(fmt(t))
+  return out
 }
 
 export const defaultQuestions = [

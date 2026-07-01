@@ -326,8 +326,9 @@ code { background: var(--bg-alt); padding: 2px 6px; border-radius: 5px; color: v
 .funnel__text:focus { outline: none; border-color: var(--gold); }
 .funnel__nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 8px; }
 .funnel__label { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: .9rem; text-align: left; }
-.funnel__label input { background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 13px; color: var(--text); font-family: inherit; font-size: 1rem; }
-.funnel__label input:focus { outline: none; border-color: var(--gold); }
+.funnel__label input, .funnel__label select { background: var(--bg-alt); border: 1px solid var(--line); border-radius: 10px; padding: 13px; color: var(--text); font-family: inherit; font-size: 1rem; }
+.funnel__label input:focus, .funnel__label select:focus { outline: none; border-color: var(--gold); }
+.funnel__hint { color: var(--muted); font-size: .82rem; text-align: center; margin: 0; }
 .funnel__row { display: flex; gap: 12px; }
 .funnel__row .funnel__label { flex: 1; }
 .funnel__badge { width: 64px; height: 64px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; background: var(--bg-alt); border: 1px solid var(--line); color: var(--gold); }

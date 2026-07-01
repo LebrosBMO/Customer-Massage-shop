@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { brand } from '../data/content.js'
-import { funnelConfig } from '../data/funnel.js'
+import { funnelConfig, bookingSlots } from '../data/funnel.js'
 import { useFunnel } from '../lib/useFunnel.js'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 
@@ -16,6 +16,9 @@ export default function Funnel() {
   const [contact, setContact] = useState({ name: '', phone: '', date: '', time: '' })
   const [forcePay, setForcePay] = useState(false)
   const [paying, setPaying] = useState(false)
+
+  const slots = bookingSlots()
+  const todayStr = new Date().toISOString().slice(0, 10)
 
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
   const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
@@ -279,13 +282,17 @@ export default function Funnel() {
             <div className="funnel__row">
               <label className="funnel__label">
                 Өдөр
-                <input type="date" required value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value })} />
+                <input type="date" required min={todayStr} value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value })} />
               </label>
               <label className="funnel__label">
                 Цаг
-                <input type="time" required value={contact.time} onChange={(e) => setContact({ ...contact, time: e.target.value })} />
+                <select required value={contact.time} onChange={(e) => setContact({ ...contact, time: e.target.value })}>
+                  <option value="">— Цаг сонгох —</option>
+                  {slots.map((s) => <option key={s} value={s}>{s}</option>)}
+                </select>
               </label>
             </div>
+            <p className="funnel__hint">Ажлын цаг: {funnelConfig.booking.open}–{funnelConfig.booking.close} · Үйлчилгээ {funnelConfig.booking.serviceMin} мин</p>
             <div className="funnel__nav">
               <button type="button" className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
               <button type="submit" className="btn funnel__cta">Үргэлжлүүлэх →</button>
