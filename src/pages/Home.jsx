@@ -14,8 +14,13 @@ export default function Home() {
           <h1>{brand.name}</h1>
           <p className="hero__intro">{brand.intro}</p>
           <div className="hero__actions">
-            <Link to="/reservation" className="btn">Цаг захиалах</Link>
+            <Link to="/start" className="btn">Цаг захиалах</Link>
             <Link to="/services" className="btn btn--ghost">Үйлчилгээ үзэх</Link>
+          </div>
+          <div className="hero__meta">
+            <span className="chip">🕐 Өдөр бүр <b>12:00–22:00</b></span>
+            <span className="chip">✦ Бүрэн нууцлал</span>
+            <span className="chip">📱 Онлайн захиалга</span>
           </div>
         </div>
       </section>
