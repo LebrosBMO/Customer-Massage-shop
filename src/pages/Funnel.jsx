@@ -202,8 +202,10 @@ export default function Funnel() {
       setInvoice(j)
       if (pollRef.current) clearInterval(pollRef.current)
       pollRef.current = setInterval(() => checkPayment(j.submissionId, true), 4000)
-    } catch {
-      setPayErr('Нэхэмжлэл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.')
+    } catch (e) {
+      // Show the server's specific reason when it has one (e.g. bad phone)
+      const known = e && e.message && e.message !== 'invoice' && e.message !== 'server' && e.message !== 'db'
+      setPayErr(known ? e.message : 'Нэхэмжлэл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.')
     }
     setPaying(false)
   }
