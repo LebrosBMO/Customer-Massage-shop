@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { brand } from '../data/content.js'
 import { funnelConfig, bookingSlots } from '../data/funnel.js'
@@ -6,6 +6,8 @@ import { useFunnel } from '../lib/useFunnel.js'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 
 const fmtAmount = (n) => `${Number(n).toLocaleString('en-US')}₮`
+// Real QPay payments go through the "qpay" Edge Function; without Supabase we stay in demo mode.
+const QPAY_FN = supabaseConfigured ? `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/qpay` : null
 
 export default function Funnel() {
   const { questions, loading } = useFunnel()
@@ -16,6 +18,12 @@ export default function Funnel() {
   const [contact, setContact] = useState({ name: '', phone: '', date: '', time: '' })
   const [forcePay, setForcePay] = useState(false)
   const [paying, setPaying] = useState(false)
+  const [invoice, setInvoice] = useState(null) // { submissionId, qrImage, shortUrl }
+  const [payErr, setPayErr] = useState('')
+  const pollRef = useRef(null)
+
+  // Stop polling for payment when leaving the page
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
 
   const slots = bookingSlots()
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -135,8 +143,7 @@ export default function Funnel() {
     })
   }
 
-  async function saveSubmission(qualified, paymentStatus) {
-    if (!supabaseConfigured) return
+  function buildAnswerLog() {
     const answerLog = Object.entries(answers).map(([qid, val]) => {
       const q = byId[qid]
       const t = q?.type || 'single'
@@ -150,10 +157,15 @@ export default function Funnel() {
     if (contact.date || contact.time) {
       answerLog.push({ question: 'Захиалсан цаг', answer: `${contact.date || ''} ${contact.time || ''}`.trim() })
     }
+    return answerLog
+  }
+
+  async function saveSubmission(qualified, paymentStatus) {
+    if (!supabaseConfigured) return
     await supabase.from('salon_funnel_submissions').insert({
       name: contact.name,
       phone: contact.phone,
-      answers: answerLog,
+      answers: buildAnswerLog(),
       qualified,
       payment_status: paymentStatus,
       amount: funnelConfig.depositAmount,
@@ -167,12 +179,54 @@ export default function Funnel() {
     else { saveSubmission(false, 'n/a'); setPhase('declined') }
   }
 
+  // Create a real QPay invoice via the Edge Function, then poll until paid.
   async function payNow() {
+    if (!QPAY_FN) { // demo mode (no Supabase configured)
+      setPaying(true)
+      await new Promise((r) => setTimeout(r, 1300))
+      await saveSubmission(true, 'paid')
+      setPaying(false)
+      setPhase('done')
+      return
+    }
     setPaying(true)
-    await new Promise((r) => setTimeout(r, 1300))
-    await saveSubmission(true, 'paid')
+    setPayErr('')
+    try {
+      const r = await fetch(QPAY_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', name: contact.name, phone: contact.phone, answers: buildAnswerLog() }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (!r.ok || j.error || !j.submissionId) throw new Error(j.error || 'invoice')
+      setInvoice(j)
+      if (pollRef.current) clearInterval(pollRef.current)
+      pollRef.current = setInterval(() => checkPayment(j.submissionId, true), 4000)
+    } catch {
+      setPayErr('Нэхэмжлэл үүсгэхэд алдаа гарлаа. Дахин оролдоно уу.')
+    }
     setPaying(false)
-    setPhase('done')
+  }
+
+  async function checkPayment(subId, silent) {
+    const id = subId || invoice?.submissionId
+    if (!id || !QPAY_FN) return
+    try {
+      const r = await fetch(QPAY_FN, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'check', submission_id: id }),
+      })
+      const j = await r.json().catch(() => ({}))
+      if (j.paid) {
+        if (pollRef.current) clearInterval(pollRef.current)
+        setPhase('done')
+      } else if (!silent) {
+        setPayErr('Төлбөр хараахан бүртгэгдээгүй байна. Төлснөөс хойш хэдэн секунд хүлээгээд дахин шалгана уу.')
+      }
+    } catch {
+      if (!silent) setPayErr('Шалгахад алдаа гарлаа. Дахин оролдоно уу.')
+    }
   }
 
   const progress =
@@ -305,16 +359,42 @@ export default function Funnel() {
             <p className="funnel__lead">{funnelConfig.qualifyText}</p>
             <div className="qpay">
               <div className="qpay__amount">{fmtAmount(funnelConfig.depositAmount)}</div>
-              <div className="qpay__qr" aria-label="QPay QR">
-                <div className="qpay__qrgrid" />
-                <span className="qpay__qrlabel">QPay QR</span>
-              </div>
-              <p className="qpay__hint">Банкны аппаараа QR-ийг уншуулна уу</p>
-              <div className="qpay__demo">Туршилтын горим — доорх товчоор төлбөрийг дуурайна</div>
+              {invoice?.qrImage ? (
+                <>
+                  <img
+                    src={`data:image/png;base64,${invoice.qrImage}`}
+                    alt="QPay QR"
+                    style={{ width: 210, height: 210, borderRadius: 12, background: '#fff', padding: 8, margin: '0 auto', display: 'block' }}
+                  />
+                  <p className="qpay__hint">Банкны аппаараа QR-ийг уншуулж төлнө үү — төлмөгц автоматаар үргэлжилнэ</p>
+                  {invoice.shortUrl && (
+                    <a className="btn btn--ghost btn--small" href={invoice.shortUrl} target="_blank" rel="noreferrer">
+                      📱 Утаснаас банкны апп нээх
+                    </a>
+                  )}
+                </>
+              ) : (
+                <>
+                  <div className="qpay__qr" aria-label="QPay QR">
+                    <div className="qpay__qrgrid" />
+                    <span className="qpay__qrlabel">QPay QR</span>
+                  </div>
+                  {QPAY_FN
+                    ? <p className="qpay__hint">Доорх товчийг дарж QPay нэхэмжлэл үүсгэнэ үү</p>
+                    : <div className="qpay__demo">Туршилтын горим — доорх товчоор төлбөрийг дуурайна</div>}
+                </>
+              )}
+              {payErr && <p style={{ color: '#e08585', fontSize: 13, marginTop: 10 }}>{payErr}</p>}
             </div>
-            <button className="btn funnel__cta" onClick={payNow} disabled={paying}>
-              {paying ? 'Төлбөр шалгаж байна…' : `QPay-ээр ${fmtAmount(funnelConfig.depositAmount)} төлөх`}
-            </button>
+            {invoice ? (
+              <button className="btn funnel__cta" onClick={() => checkPayment()}>
+                Төлбөр шалгах ✓
+              </button>
+            ) : (
+              <button className="btn funnel__cta" onClick={payNow} disabled={paying}>
+                {paying ? 'Түр хүлээнэ үү…' : `QPay-ээр ${fmtAmount(funnelConfig.depositAmount)} төлөх`}
+              </button>
+            )}
           </div>
         ) : phase === 'declined' ? (
           <div className="funnel__screen funnel__center">
