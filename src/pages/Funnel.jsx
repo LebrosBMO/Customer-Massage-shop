@@ -377,10 +377,6 @@ export default function Funnel() {
                 </>
               ) : (
                 <>
-                  <div className="qpay__qr" aria-label="QPay QR">
-                    <div className="qpay__qrgrid" />
-                    <span className="qpay__qrlabel">QPay QR</span>
-                  </div>
                   {QPAY_FN
                     ? <p className="qpay__hint">Доорх товчийг дарж QPay нэхэмжлэл үүсгэнэ үү</p>
                     : <div className="qpay__demo">Туршилтын горим — доорх товчоор төлбөрийг дуурайна</div>}
