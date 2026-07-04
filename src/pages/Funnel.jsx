@@ -357,7 +357,7 @@ export default function Funnel() {
         ) : phase === 'payment' ? (
           <div className="funnel__screen funnel__center">
             <div className="funnel__badge funnel__badge--ok">✓</div>
-            <h1>{funnelConfig.qualifyTitle}</h1>
+            {funnelConfig.qualifyTitle && <h1>{funnelConfig.qualifyTitle}</h1>}
             <p className="funnel__lead">{funnelConfig.qualifyText}</p>
             <div className="qpay">
               <div className="qpay__amount">{fmtAmount(funnelConfig.depositAmount)}</div>
