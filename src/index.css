@@ -557,6 +557,40 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
 .funnel__row { display: flex; gap: 12px; }
 .funnel__row .funnel__label { flex: 1; }
 .funnel__hint { color: var(--faint); font-size: 0.82rem; text-align: center; margin: 0; }
+
+/* Booking slot grid */
+.slotbox { display: flex; flex-direction: column; gap: 12px; animation: fadeUp 0.35s var(--ease) both; }
+.slotbox__head { display: flex; align-items: baseline; justify-content: space-between; color: var(--muted); font-size: 0.88rem; font-weight: 500; }
+.slotbox__loading { color: var(--faint); font-size: 0.78rem; }
+.slotgrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.slot {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  background: #191309;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 6px;
+  color: var(--text);
+  font-family: inherit; font-size: 1.02rem; font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s, transform 0.18s var(--ease);
+}
+.slot:hover:not(:disabled) { border-color: rgba(217, 165, 102, 0.6); transform: translateY(-2px); }
+.slot.is-selected { border-color: var(--gold); background: rgba(217, 165, 102, 0.14); color: var(--gold-soft); box-shadow: 0 0 0 1px var(--gold) inset; }
+.slot.is-taken {
+  cursor: not-allowed;
+  color: #6a5b49;
+  background: #17110b;
+  border-color: #241b12;
+  text-decoration: line-through;
+  text-decoration-color: rgba(160, 110, 110, 0.6);
+}
+.slot__tag {
+  text-decoration: none;
+  font-size: 0.62rem; font-weight: 600; letter-spacing: 0.04em;
+  color: #9a6b6b; text-transform: uppercase;
+}
+@media (max-width: 420px) { .slotgrid { grid-template-columns: repeat(2, 1fr); } }
 .funnel__badge {
   width: 68px; height: 68px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

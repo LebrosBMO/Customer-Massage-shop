@@ -172,3 +172,33 @@ create policy "Staff can read submissions"
   on public.salon_funnel_submissions for select to authenticated using (true);
 create policy "Staff can update submissions"
   on public.salon_funnel_submissions for update to authenticated using (true) with check (true);
+
+
+-- ---------------------------------------------------------------------------
+-- Booked slots: ONLY the date/time/status of taken slots (no personal data),
+-- so the public site can grey out unavailable times without leaking any PII.
+-- ---------------------------------------------------------------------------
+create table if not exists public.salon_booked_slots (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  date date not null,
+  time text not null,
+  status text not null default 'booked'
+);
+
+alter table public.salon_booked_slots enable row level security;
+
+-- Safe to read publicly — contains no names or phone numbers.
+create policy "Public can read booked slots"
+  on public.salon_booked_slots for select to anon using (true);
+create policy "Public can create booked slots"
+  on public.salon_booked_slots for insert to anon with check (true);
+create policy "Staff can manage booked slots"
+  on public.salon_booked_slots for update to authenticated using (true) with check (true);
+create policy "Staff can delete booked slots"
+  on public.salon_booked_slots for delete to authenticated using (true);
+
+-- Prevent two active bookings for the same date + time (defense-in-depth).
+create unique index if not exists salon_booked_slots_unique
+  on public.salon_booked_slots (date, time)
+  where status <> 'cancelled';

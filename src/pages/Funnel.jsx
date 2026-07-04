@@ -20,10 +20,40 @@ export default function Funnel() {
   const [paying, setPaying] = useState(false)
   const [invoice, setInvoice] = useState(null) // { submissionId, qrImage, shortUrl }
   const [payErr, setPayErr] = useState('')
+  const [takenSlots, setTakenSlots] = useState([]) // times already booked for the chosen date
+  const [loadingSlots, setLoadingSlots] = useState(false)
   const pollRef = useRef(null)
 
   // Stop polling for payment when leaving the page
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current) }, [])
+
+  // When the chosen date changes, load which time slots are already taken.
+  // Only the date + time are read here (no personal details), so it's safe.
+  useEffect(() => {
+    let alive = true
+    if (!supabaseConfigured || !contact.date) { setTakenSlots([]); return }
+    setLoadingSlots(true)
+    supabase
+      .from('salon_booked_slots')
+      .select('time')
+      .eq('date', contact.date)
+      .neq('status', 'cancelled')
+      .then(({ data }) => {
+        if (!alive) return
+        const taken = (data || []).map((r) => r.time)
+        setTakenSlots(taken)
+        setLoadingSlots(false)
+        // If the currently selected time just became unavailable, clear it.
+        setContact((c) => (taken.includes(c.time) ? { ...c, time: '' } : c))
+      })
+    return () => { alive = false }
+  }, [contact.date])
+
+  // Record a booked slot (safe table: date/time/status only) once paid.
+  async function reserveSlot() {
+    if (!supabaseConfigured || !contact.date || !contact.time) return
+    await supabase.from('salon_booked_slots').insert({ date: contact.date, time: contact.time, status: 'booked' })
+  }
 
   const slots = bookingSlots()
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -185,6 +215,7 @@ export default function Funnel() {
       setPaying(true)
       await new Promise((r) => setTimeout(r, 1300))
       await saveSubmission(true, 'paid')
+      await reserveSlot()
       setPaying(false)
       setPhase('done')
       return
@@ -222,6 +253,7 @@ export default function Funnel() {
       const j = await r.json().catch(() => ({}))
       if (j.paid) {
         if (pollRef.current) clearInterval(pollRef.current)
+        await reserveSlot()
         setPhase('done')
       } else if (!silent) {
         setPayErr('Төлбөр хараахан бүртгэгдээгүй байна. Төлснөөс хойш хэдэн секунд хүлээгээд дахин шалгана уу.')
@@ -335,23 +367,41 @@ export default function Funnel() {
               Утас
               <input required value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
             </label>
-            <div className="funnel__row">
-              <label className="funnel__label">
-                Өдөр
-                <input type="date" required min={todayStr} value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value })} />
-              </label>
-              <label className="funnel__label">
-                Цаг
-                <select required value={contact.time} onChange={(e) => setContact({ ...contact, time: e.target.value })}>
-                  <option value="">— Цаг сонгох —</option>
-                  {slots.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
-              </label>
-            </div>
-            <p className="funnel__hint">Ажлын цаг: {funnelConfig.booking.open}–{funnelConfig.booking.close} · Үйлчилгээ {funnelConfig.booking.serviceMin} мин</p>
+            <label className="funnel__label">
+              Өдөр
+              <input type="date" required min={todayStr} value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value, time: '' })} />
+            </label>
+
+            {contact.date && (
+              <div className="slotbox">
+                <div className="slotbox__head">
+                  <span>Цаг сонгох</span>
+                  {loadingSlots && <span className="slotbox__loading">шалгаж байна…</span>}
+                </div>
+                <div className="slotgrid">
+                  {slots.map((s) => {
+                    const taken = takenSlots.includes(s)
+                    return (
+                      <button
+                        type="button"
+                        key={s}
+                        className={`slot ${contact.time === s ? 'is-selected' : ''} ${taken ? 'is-taken' : ''}`}
+                        disabled={taken}
+                        onClick={() => setContact({ ...contact, time: s })}
+                      >
+                        {s}
+                        {taken && <span className="slot__tag">Захиалсан</span>}
+                      </button>
+                    )
+                  })}
+                </div>
+                <p className="funnel__hint">Ажлын цаг: {funnelConfig.booking.open}–{funnelConfig.booking.close} · Үйлчилгээ {funnelConfig.booking.serviceMin} мин</p>
+              </div>
+            )}
+
             <div className="funnel__nav">
               <button type="button" className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
-              <button type="submit" className="btn funnel__cta">Үргэлжлүүлэх →</button>
+              <button type="submit" className="btn funnel__cta" disabled={!contact.date || !contact.time}>Үргэлжлүүлэх →</button>
             </div>
           </form>
         ) : phase === 'payment' ? (
