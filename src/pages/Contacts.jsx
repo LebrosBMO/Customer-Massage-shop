@@ -35,7 +35,7 @@ export default function Contacts() {
           Бичихийг илүүд үзвэл <a href={`mailto:${brand.email}`}>{brand.email}</a> хаягаар имэйл бичих эсвэл{' '}
           <a href={brand.instagram} target="_blank" rel="noreferrer">Instagram</a>-аар мессеж илгээгээрэй.
         </p>
-        <Link to="/reservation" className="btn">Захиалга өгөх</Link>
+        <Link to="/start" className="btn">Форум бөглөх</Link>
       </div>
     </div>
   )

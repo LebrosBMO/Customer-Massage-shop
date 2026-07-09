@@ -21,7 +21,7 @@ export default function Services() {
               <h2>{s.name}</h2>
               <span className="pill">{s.duration}</span>
               <p>{s.blurb}</p>
-              <Link to="/reservation" className="link-arrow">Үүнийг захиалах →</Link>
+              <Link to="/start" className="link-arrow">Форум бөглөх →</Link>
             </div>
           </article>
         ))}

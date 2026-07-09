@@ -35,7 +35,7 @@ export default function PriceList() {
       {loading && <p className="note">Ачаалж байна…</p>}
 
       <div className="section__cta">
-        <Link to="/reservation" className="btn">Захиалга өгөх</Link>
+        <Link to="/start" className="btn">Форум бөглөх</Link>
       </div>
     </div>
   )

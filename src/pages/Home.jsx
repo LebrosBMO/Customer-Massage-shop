@@ -14,7 +14,7 @@ export default function Home() {
           <h1>{brand.name}</h1>
           <p className="hero__intro">{brand.intro}</p>
           <div className="hero__actions">
-            <Link to="/start" className="btn">Цаг захиалах</Link>
+            <Link to="/start" className="btn">Форум бөглөх</Link>
             <Link to="/services" className="btn btn--ghost">Үйлчилгээ үзэх</Link>
           </div>
           <div className="hero__meta">
@@ -67,7 +67,7 @@ export default function Home() {
         <div className="container band__inner">
           <h2>Амрахад бэлэн үү?</h2>
           <p>Хэдхэн товшилтоор тайван агшнаа захиалаарай.</p>
-          <Link to="/reservation" className="btn">Захиалга өгөх</Link>
+          <Link to="/start" className="btn">Форум бөглөх</Link>
         </div>
       </section>
     </>

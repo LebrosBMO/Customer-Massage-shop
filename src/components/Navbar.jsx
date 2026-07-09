@@ -43,8 +43,8 @@ export default function Navbar() {
               {l.label}
             </NavLink>
           ))}
-          <Link to="/reservation" className="btn btn--small" onClick={() => setOpen(false)}>
-            Захиалга
+          <Link to="/start" className="btn btn--small" onClick={() => setOpen(false)}>
+            Форум бөглөх
           </Link>
         </nav>
       </div>
