@@ -199,14 +199,38 @@ export default function Funnel() {
     })
   }
 
-  // Register the person in the manager app's customer journal (customers table):
+  // Find the Telegram username answer among the questions (matched by the
+  // question text containing "телеграм"), regardless of its question id —
+  // admins can freely edit/reorder questions without breaking this.
+  function findTelegramAnswer() {
+    const entry = Object.entries(answers).find(([qid]) => {
+      const q = byId[qid]
+      return q && /телеграм/i.test(q.question || '')
+    })
+    if (!entry) return null
+    const [qid, val] = entry
+    const q = byId[qid]
+    const t = q?.type || 'single'
+    if (t === 'text') return (val || '').trim() || null
+    if (t === 'single') return q.choices[val]?.label ?? null
+    return null
+  }
+
+  // Register the person in the manager app's customer journal (customers
+  // table), keyed by their Telegram username so repeat visits under the same
+  // handle merge into one customer instead of duplicating. Falls back to the
+  // typed name if no Telegram question was answered.
   // existing name → append a note; new name → create with a unique SLA code.
   async function createJournalCustomer() {
     if (!supabaseConfigured) return
     try {
-      const name = (contact.name || '').trim()
+      const telegramName = findTelegramAnswer()
+      const name = (telegramName || contact.name || '').trim()
       if (!name) return
-      const noteText = 'Вэб анкетаас бүртгэгдсэн.\nУтас: ' + (contact.phone || '—') +
+      const noteText = 'Вэб анкетаас бүртгэгдсэн.\n' +
+        'Нэр: ' + (contact.name || '—') + '\n' +
+        (telegramName ? 'Телеграм: ' + telegramName + '\n' : '') +
+        'Утас: ' + (contact.phone || '—') +
         '\nЗахиалсан цаг: ' + `${contact.date || ''} ${contact.time || ''}`.trim() + '\n' +
         buildAnswerLog().filter((a) => a.question !== 'Захиалсан цаг').map((a) => `${a.question}: ${a.answer ?? ''}`).join('\n')
       const note = { date: new Date().toISOString().slice(0, 10), text: noteText, by: 'Вэб' }
