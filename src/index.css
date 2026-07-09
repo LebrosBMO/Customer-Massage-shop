@@ -506,7 +506,14 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
 .funnel__center h1 { font-size: clamp(2rem, 4.48vw, 3.2rem); }
 .funnel__lead { color: var(--muted); margin: 0; line-height: 1.75; }
 .funnel__cta { min-width: 132px; }
-.funnel__q h2 { font-size: 1.32rem; margin-bottom: 16px; line-height: 1.35; }
+.funnel__q h2 {
+  font-family: var(--font);
+  font-weight: 700;
+  letter-spacing: 0;
+  font-size: 1.28rem;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
 .funnel__req { color: #e6a3a3; }
 .funnel__choices { display: flex; flex-direction: column; gap: 10px; }
 .choice {
