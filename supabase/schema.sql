@@ -131,7 +131,7 @@ insert into public.salon_funnel_groups (sort_order, name, multiplier) values
   (0, 'Бүлэг 1', 1),
   (1, 'Бүлэг 2', 1.5),
   (2, 'Бүлэг 3', 2),
-  (3, 'Бүлэг 4', 2.5)
+  (3, 'Бүлэг 4', 2)
 on conflict do nothing;
 
 

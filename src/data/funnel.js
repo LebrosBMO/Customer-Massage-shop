@@ -60,7 +60,7 @@ export const defaultGroups = [
   { id: 'g1', sort_order: 0, name: 'Бүлэг 1', multiplier: 1 },
   { id: 'g2', sort_order: 1, name: 'Бүлэг 2', multiplier: 1.5 },
   { id: 'g3', sort_order: 2, name: 'Бүлэг 3', multiplier: 2 },
-  { id: 'g4', sort_order: 3, name: 'Бүлэг 4', multiplier: 2.5 },
+  { id: 'g4', sort_order: 3, name: 'Бүлэг 4', multiplier: 2 },
 ]
 
 export const defaultQuestions = [
