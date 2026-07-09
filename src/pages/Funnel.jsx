@@ -272,7 +272,7 @@ export default function Funnel() {
         ) : phase === 'intro' ? (
           <div className="funnel__screen funnel__center">
             <div className="funnel__icon">✦</div>
-            <h1>{funnelConfig.intro.title}</h1>
+            {funnelConfig.intro.title && <h1>{funnelConfig.intro.title}</h1>}
             <p className="funnel__lead">{funnelConfig.intro.text}</p>
             <button className="btn funnel__cta" onClick={startFunnel}>{funnelConfig.intro.cta}</button>
           </div>
