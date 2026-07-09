@@ -17,7 +17,6 @@ export default function Home() {
           <p className="hero__intro">{site.intro}</p>
           <div className="hero__actions">
             <Link to="/start" className="btn">Форум бөглөх</Link>
-            <Link to="/services" className="btn btn--ghost">Үйлчилгээ үзэх</Link>
           </div>
           <div className="hero__meta">
             <span className="chip">🕐 Өдөр бүр <b>12:00–22:00</b></span>
@@ -33,7 +32,7 @@ export default function Home() {
           <p>Гүн, яаруугүй амралтад зориулан бүтээсэн зан үйлийн цомирлог цэс.</p>
         </header>
         <div className="grid grid--3">
-          {services.slice(0, 3).map((s) => (
+          {services.map((s) => (
             <article key={s.id} className="card">
               <div className="card__media" style={{ backgroundImage: `url(${s.image})` }} />
               <div className="card__body">
@@ -45,7 +44,7 @@ export default function Home() {
           ))}
         </div>
         <div className="section__cta">
-          <Link to="/services" className="btn btn--ghost">Бүх үйлчилгээг үзэх</Link>
+          <Link to="/start" className="btn btn--ghost">Форум бөглөх</Link>
         </div>
       </section>
 

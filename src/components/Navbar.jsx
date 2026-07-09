@@ -4,11 +4,6 @@ import { brand } from '../data/content.js'
 
 const links = [
   { to: '/', label: 'Нүүр', end: true },
-  { to: '/prices', label: 'Үнийн жагсаалт' },
-  { to: '/services', label: 'Үйлчилгээ' },
-  { to: '/faq', label: 'Түгээмэл асуулт' },
-  { to: '/blog', label: 'Блог' },
-  { to: '/contacts', label: 'Холбоо барих' },
 ]
 
 export default function Navbar() {

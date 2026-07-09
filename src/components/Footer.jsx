@@ -27,9 +27,6 @@ export default function Footer() {
 
         <div>
           <h4>Цэс</h4>
-          <p><Link to="/services">Үйлчилгээ</Link></p>
-          <p><Link to="/prices">Үнийн жагсаалт</Link></p>
-          <p><Link to="/faq">Түгээмэл асуулт</Link></p>
           <p><Link to="/start">Форум бөглөх</Link></p>
           <p><a href={brand.instagram} target="_blank" rel="noreferrer">Instagram</a></p>
         </div>
