@@ -503,6 +503,7 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
 .funnel__center { text-align: center; align-items: center; gap: 15px; }
 .funnel__loading { text-align: center; color: var(--muted); padding: 44px 0; }
 .funnel__icon { font-size: 2.5rem; color: var(--gold); }
+.funnel__center h1 { font-size: clamp(2rem, 4.48vw, 3.2rem); }
 .funnel__lead { color: var(--muted); margin: 0; line-height: 1.75; }
 .funnel__cta { min-width: 132px; }
 .funnel__q h2 { font-size: 1.32rem; margin-bottom: 16px; line-height: 1.35; }
