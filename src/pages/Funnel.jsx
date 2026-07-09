@@ -147,10 +147,6 @@ export default function Funnel() {
   })()
   const canAdvance = !current?.required || answered
 
-  // For single-choice: the selected choice and whether it has an explanation.
-  const selChoice = qtype === 'single' && answers[current?.id] != null ? current.choices[answers[current.id]] : null
-  const selHasExplain = !!(selChoice && selChoice.explain && selChoice.explain.trim())
-
   // Qualified only if every answered choice-question used a valid choice.
   function evaluate() {
     return Object.entries(answers).every(([qid, val]) => {
@@ -283,20 +279,29 @@ export default function Funnel() {
 
               {qtype === 'single' && (
                 <div className="funnel__choices">
-                  {current.choices.map((c, ci) => (
-                    <button
-                      key={ci}
-                      className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
-                      onClick={() => pickSingle(ci)}
-                    >
-                      <span className="choice__dot" />{c.label}
-                    </button>
-                  ))}
+                  {current.choices.map((c, ci) => {
+                    const selected = answers[current.id] === ci
+                    const showExplain = selected && c.explain && c.explain.trim()
+                    return (
+                      <div key={ci} className="funnel__choice-wrap">
+                        <button
+                          className={`choice ${selected ? 'is-selected' : ''}`}
+                          onClick={() => pickSingle(ci)}
+                        >
+                          <span className="choice__dot" />{c.label}
+                        </button>
+                        {showExplain && (
+                          <div className="funnel__explain">
+                            <p>{c.explain}</p>
+                            <button type="button" className="btn btn--small" onClick={continueSingle}>
+                              Үргэлжлүүлэх →
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
-              )}
-
-              {qtype === 'single' && selHasExplain && (
-                <div className="funnel__explain">{selChoice.explain}</div>
               )}
 
               {qtype === 'multi' && (
@@ -332,11 +337,6 @@ export default function Funnel() {
               {qtype !== 'single' && (
                 <button className="btn funnel__cta" disabled={!canAdvance} onClick={advanceSequential}>
                   Цааш →
-                </button>
-              )}
-              {qtype === 'single' && selHasExplain && (
-                <button className="btn funnel__cta" onClick={continueSingle}>
-                  Үргэлжлүүлэх →
                 </button>
               )}
             </div>
