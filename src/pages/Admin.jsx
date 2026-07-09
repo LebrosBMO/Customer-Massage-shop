@@ -576,6 +576,28 @@ function FunnelPanel({ demo }) {
     })
   }
 
+  // One-click duplicate: inserts an exact copy (same choices/branching/points)
+  // at the end of the list, so it can be tweaked without rebuilding it.
+  async function duplicate(q) {
+    setError('')
+    const payload = {
+      question: q.question + ' (хуулбар)',
+      type: q.type || 'single',
+      required: !!q.required,
+      choices: (q.choices || []).map((c) => ({ ...c })),
+      active: q.active,
+      sort_order: rows.length,
+    }
+    if (demo) {
+      setRows((rs) => [...rs, { ...payload, id: crypto.randomUUID() }])
+      return
+    }
+    const { data, error } = await supabase.from('salon_funnel_questions').insert(payload).select('id')
+    if (error) { setError(error.message); return }
+    if (!data || data.length === 0) { setError('Хуулагдсангүй — гараад дахин нэвтэрч үзнэ үү.'); return }
+    load()
+  }
+
   const upd = (field, value) => setEditing((s) => ({ ...s, [field]: value }))
   const updChoice = (i, field, value) =>
     setEditing((s) => ({
@@ -793,6 +815,7 @@ function FunnelPanel({ demo }) {
                   >
                     {q.active ? 'Идэвхтэй' : 'Нуусан'}
                   </button>
+                  <button className="link-btn" onClick={() => duplicate(q)}>Хуулах</button>
                   <button className="link-btn" onClick={() => startEdit(q)}>Засах</button>
                   <button className="link-btn link-btn--danger" onClick={() => remove(q)}>Устгах</button>
                 </div>
