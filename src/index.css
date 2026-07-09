@@ -528,6 +528,8 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
 }
 .choice:hover { border-color: rgba(220, 38, 38, 0.55); transform: translateX(3px); }
 .choice__dot { width: 19px; height: 19px; border-radius: 50%; border: 2px solid #3a3a3a; flex: 0 0 auto; transition: all 0.18s; }
+.choice__text { display: flex; flex-direction: column; gap: 3px; }
+.choice__caption { font-size: 0.8rem; font-weight: 400; color: var(--muted); }
 .choice.is-selected { border-color: var(--gold); background: rgba(220, 38, 38, 0.1); }
 .choice.is-selected .choice__dot { border-color: var(--gold); background: var(--gold); box-shadow: inset 0 0 0 3.5px #181212; }
 .choice__box {
@@ -542,17 +544,6 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .funnel__text:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.13); }
-.funnel__choice-wrap { display: flex; flex-direction: column; gap: 10px; }
-.funnel__explain {
-  display: flex; flex-direction: column; gap: 14px; align-items: flex-start;
-  background: rgba(220, 38, 38, 0.07);
-  border: 1px solid rgba(220, 38, 38, 0.2);
-  border-left: 3px solid var(--gold);
-  border-radius: 4px;
-  padding: 16px 18px;
-  animation: fadeUp 0.35s var(--ease) both;
-}
-.funnel__explain p { margin: 0; color: #d9d9d9; font-size: 0.95rem; line-height: 1.7; }
 .funnel__nav { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 10px; }
 .funnel__label { display: flex; flex-direction: column; gap: 7px; color: var(--muted); font-size: 0.88rem; font-weight: 500; text-align: left; }
 .funnel__label input, .funnel__label select {

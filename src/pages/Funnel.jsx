@@ -90,17 +90,12 @@ export default function Funnel() {
     goTo(computeNext(choice))
   }
 
-  // Single-choice: select then auto-advance — UNLESS the choice has an
-  // explanation, in which case pause and show it with a Continue button.
+  // Single-choice: select then auto-advance, same as every other choice.
+  // Any explanation text is shown as a caption on the choice itself.
   function pickSingle(choiceIndex) {
     const choice = current.choices[choiceIndex]
     setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
-    if (choice.explain && choice.explain.trim()) return
     setTimeout(() => advanceForChoice(choice), 220)
-  }
-
-  function continueSingle() {
-    advanceForChoice(current.choices[answers[current.id]])
   }
 
   function toggleMulti(choiceIndex) {
@@ -279,28 +274,21 @@ export default function Funnel() {
 
               {qtype === 'single' && (
                 <div className="funnel__choices">
-                  {current.choices.map((c, ci) => {
-                    const selected = answers[current.id] === ci
-                    const showExplain = selected && c.explain && c.explain.trim()
-                    return (
-                      <div key={ci} className="funnel__choice-wrap">
-                        <button
-                          className={`choice ${selected ? 'is-selected' : ''}`}
-                          onClick={() => pickSingle(ci)}
-                        >
-                          <span className="choice__dot" />{c.label}
-                        </button>
-                        {showExplain && (
-                          <div className="funnel__explain">
-                            <p>{c.explain}</p>
-                            <button type="button" className="btn btn--small" onClick={continueSingle}>
-                              Үргэлжлүүлэх →
-                            </button>
-                          </div>
+                  {current.choices.map((c, ci) => (
+                    <button
+                      key={ci}
+                      className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
+                      onClick={() => pickSingle(ci)}
+                    >
+                      <span className="choice__dot" />
+                      <span className="choice__text">
+                        {c.label}
+                        {c.explain && c.explain.trim() && (
+                          <span className="choice__caption">{c.explain}</span>
                         )}
-                      </div>
-                    )
-                  })}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               )}
 
