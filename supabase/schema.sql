@@ -102,6 +102,40 @@ on conflict do nothing;
 
 
 -- ---------------------------------------------------------------------------
+-- Funnel question groups: each group carries a score multiplier. A question's
+-- selected-choice points are multiplied by its group's multiplier when the
+-- total score is computed (e.g. Group 1 = x1, Group 2 = x1.5, Group 3 = x2).
+-- ---------------------------------------------------------------------------
+create table if not exists public.salon_funnel_groups (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  sort_order int not null default 0,
+  name text not null,
+  multiplier numeric not null default 1
+);
+
+alter table public.salon_funnel_groups enable row level security;
+
+create policy "Public can read groups"
+  on public.salon_funnel_groups for select to anon using (true);
+create policy "Staff can read groups"
+  on public.salon_funnel_groups for select to authenticated using (true);
+create policy "Staff can insert groups"
+  on public.salon_funnel_groups for insert to authenticated with check (true);
+create policy "Staff can update groups"
+  on public.salon_funnel_groups for update to authenticated using (true) with check (true);
+create policy "Staff can delete groups"
+  on public.salon_funnel_groups for delete to authenticated using (true);
+
+insert into public.salon_funnel_groups (sort_order, name, multiplier) values
+  (0, 'Бүлэг 1', 1),
+  (1, 'Бүлэг 2', 1.5),
+  (2, 'Бүлэг 3', 2),
+  (3, 'Бүлэг 4', 2.5)
+on conflict do nothing;
+
+
+-- ---------------------------------------------------------------------------
 -- Funnel questions: the step-by-step questionnaire, editable in /admin.
 -- `choices` is JSON: [{ "label": "...", "disqualifies": false }, ...]
 -- ---------------------------------------------------------------------------
@@ -113,12 +147,14 @@ create table if not exists public.salon_funnel_questions (
   type text not null default 'single',   -- 'single' | 'multi' | 'text'
   required boolean not null default false,
   choices jsonb not null default '[]'::jsonb,
-  active boolean not null default true
+  active boolean not null default true,
+  group_id uuid references public.salon_funnel_groups(id) on delete set null
 );
 
 -- If the table already existed, make sure the new columns are present.
 alter table public.salon_funnel_questions add column if not exists type text not null default 'single';
 alter table public.salon_funnel_questions add column if not exists required boolean not null default false;
+alter table public.salon_funnel_questions add column if not exists group_id uuid references public.salon_funnel_groups(id) on delete set null;
 
 alter table public.salon_funnel_questions enable row level security;
 

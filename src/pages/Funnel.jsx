@@ -6,7 +6,8 @@ import { useFunnel } from '../lib/useFunnel.js'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 
 export default function Funnel() {
-  const { questions, loading } = useFunnel()
+  const { questions, groups, loading } = useFunnel()
+  const groupById = Object.fromEntries((groups || []).map((g) => [g.id, g]))
   const [phase, setPhase] = useState('intro') // intro | question | contact | declined | done
   const [currentId, setCurrentId] = useState(null)
   const [history, setHistory] = useState([])
@@ -155,15 +156,18 @@ export default function Funnel() {
   }
 
   // Sum the points of every selected choice (single: one choice, multi: all
-  // ticked choices). Text answers and unanswered questions contribute 0.
+  // ticked choices), each multiplied by that question's group multiplier
+  // (e.g. Group 1 = x1, Group 2 = x1.5). No group assigned = x1. Text
+  // answers and unanswered questions contribute 0.
   function computeScore() {
     return Object.entries(answers).reduce((total, [qid, val]) => {
       const q = byId[qid]
       if (!q) return total
+      const mult = q.group_id && groupById[q.group_id] ? Number(groupById[q.group_id].multiplier) || 1 : 1
       const t = q.type || 'single'
-      if (t === 'single') return total + (Number(q.choices[val]?.points) || 0)
+      if (t === 'single') return total + (Number(q.choices[val]?.points) || 0) * mult
       if (t === 'multi' && Array.isArray(val)) {
-        return total + val.reduce((s, i) => s + (Number(q.choices[i]?.points) || 0), 0)
+        return total + val.reduce((s, i) => s + (Number(q.choices[i]?.points) || 0), 0) * mult
       }
       return total
     }, 0)

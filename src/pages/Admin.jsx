@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 import { brand, locations, testimonials as staticTestimonials } from '../data/content.js'
 import { staticServiceList } from '../lib/useServices.js'
-import { defaultQuestions } from '../data/funnel.js'
+import { defaultQuestions, defaultGroups } from '../data/funnel.js'
 
 const STATUSES = ['new', 'confirmed', 'done', 'cancelled']
 const STATUS_LABELS = {
@@ -531,6 +531,7 @@ const blankQuestion = () => ({
   question: '',
   type: 'single',
   required: true,
+  group_id: '',
   choices: [
     { label: '', disqualifies: false, points: 0 },
     { label: '', disqualifies: false, points: 0 },
@@ -547,6 +548,7 @@ const QTYPES = [
 
 function FunnelPanel({ demo }) {
   const [rows, setRows] = useState(demo ? defaultQuestions : [])
+  const [groups, setGroups] = useState(demo ? defaultGroups : [])
   const [loading, setLoading] = useState(!demo)
   const [error, setError] = useState('')
   const [editing, setEditing] = useState(null)
@@ -555,12 +557,13 @@ function FunnelPanel({ demo }) {
   const load = useCallback(async () => {
     if (demo) return
     setLoading(true)
-    const { data, error } = await supabase
-      .from('salon_funnel_questions')
-      .select('*')
-      .order('sort_order', { ascending: true })
-    if (error) setError(error.message)
-    else setRows(data)
+    const [qRes, gRes] = await Promise.all([
+      supabase.from('salon_funnel_questions').select('*').order('sort_order', { ascending: true }),
+      supabase.from('salon_funnel_groups').select('*').order('sort_order', { ascending: true }),
+    ])
+    if (qRes.error) setError(qRes.error.message)
+    else setRows(qRes.data)
+    if (!gRes.error) setGroups(gRes.data || [])
     setLoading(false)
   }, [demo])
 
@@ -576,6 +579,7 @@ function FunnelPanel({ demo }) {
       ...q,
       type: q.type || 'single',
       required: q.required ?? false,
+      group_id: q.group_id || '',
       choices: (q.choices || []).map((c) => ({ points: 0, ...c })),
     })
   }
@@ -588,6 +592,7 @@ function FunnelPanel({ demo }) {
       question: q.question + ' (хуулбар)',
       type: q.type || 'single',
       required: !!q.required,
+      group_id: q.group_id || null,
       choices: (q.choices || []).map((c) => ({ ...c })),
       active: q.active,
       sort_order: rows.length,
@@ -622,6 +627,7 @@ function FunnelPanel({ demo }) {
       question: editing.question,
       type: editing.type || 'single',
       required: !!editing.required,
+      group_id: editing.group_id || null,
       choices: editing.type === 'text'
         ? []
         : editing.choices.filter((c) => c.label.trim()).map((c) => ({ ...c, points: Number(c.points) || 0 })),
@@ -673,11 +679,74 @@ function FunnelPanel({ demo }) {
     else if (!data || data.length === 0) { setError('Өөрчлөгдсөнгүй — гараад дахин нэвтэрч үзнэ үү.'); load() }
   }
 
+  // Group CRUD — each group holds a score multiplier applied to every
+  // question assigned to it. Edits are local until "Хадгалах" per row.
+  function addGroup() {
+    setGroups((gs) => [...gs, { id: 'new-' + Date.now(), name: '', multiplier: 1, sort_order: gs.length, _isNew: true }])
+  }
+  function editGroupField(id, field, value) {
+    setGroups((gs) => gs.map((g) => (g.id === id ? { ...g, [field]: value } : g)))
+  }
+  async function saveGroup(g) {
+    setError('')
+    const payload = { name: g.name, multiplier: Number(g.multiplier) || 1, sort_order: Number(g.sort_order) || 0 }
+    if (demo) return
+    if (g._isNew) {
+      const { data, error } = await supabase.from('salon_funnel_groups').insert(payload).select('id')
+      if (error) { setError(error.message); return }
+      if (!data || data.length === 0) { setError('Хадгалагдсангүй — дахин нэвтэрч үзнэ үү.'); return }
+    } else {
+      const { data, error } = await supabase.from('salon_funnel_groups').update(payload).eq('id', g.id).select('id')
+      if (error) { setError(error.message); return }
+      if (!data || data.length === 0) { setError('Хадгалагдсангүй — дахин нэвтэрч үзнэ үү.'); return }
+    }
+    load()
+  }
+  async function removeGroup(g) {
+    if (!window.confirm(`«${g.name || 'нэргүй бүлэг'}» бүлгийг устгах уу? Асуултууд бүлэггүй болно.`)) return
+    if (g._isNew) { setGroups((gs) => gs.filter((x) => x.id !== g.id)); return }
+    if (demo) { setGroups((gs) => gs.filter((x) => x.id !== g.id)); return }
+    const { error } = await supabase.from('salon_funnel_groups').delete().eq('id', g.id)
+    if (error) setError(error.message)
+    else load()
+  }
+
   return (
     <>
       <div className="banner banner--info">
         Энэ нь хуваалцах холбоосны (<code>/start</code>) алхам алхмаар асуулга. Сонголтыг
         «Тэнцэхгүй» гэж тэмдэглэвэл түүнийг сонгосон үйлчлүүлэгчид төлбөрийн цонх гарахгүй.
+        Асуултыг бүлэгт хамааруулж, бүлэг тус бүрт өөр үржүүлэгч (жиш: x1, x1.5, x2) өгч болно —
+        нийт оноог тооцоход хариултын оноог энэ үржүүлэгчээр үржүүлнэ.
+      </div>
+
+      <div className="choices-edit" style={{ marginBottom: 20 }}>
+        <span className="choices-edit__title">Бүлгүүд (оноо үржүүлэгч)</span>
+        {groups.map((g) => (
+          <div key={g.id} className="choice-edit">
+            <input
+              placeholder="Бүлгийн нэр"
+              value={g.name}
+              onChange={(e) => editGroupField(g.id, 'name', e.target.value)}
+              style={{ flex: '1 1 160px' }}
+            />
+            <label className="choice-edit__points" title="Оноог энэ тоогоор үржүүлнэ">
+              <span>×</span>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={g.multiplier}
+                onChange={(e) => editGroupField(g.id, 'multiplier', e.target.value)}
+              />
+            </label>
+            {!demo && (
+              <button type="button" className="link-btn" onClick={() => saveGroup(g)}>Хадгалах</button>
+            )}
+            <button type="button" className="link-btn link-btn--danger" onClick={() => removeGroup(g)}>✕</button>
+          </div>
+        ))}
+        <button type="button" className="link-btn" onClick={addGroup}>+ Бүлэг нэмэх</button>
       </div>
 
       <div className="admin-toolbar">
@@ -703,6 +772,15 @@ function FunnelPanel({ demo }) {
               Хариултын төрөл
               <select value={editing.type} onChange={(e) => upd('type', e.target.value)}>
                 {QTYPES.map((t) => <option key={t.v} value={t.v}>{t.label}</option>)}
+              </select>
+            </label>
+            <label>
+              Бүлэг (оноо үржүүлэгч)
+              <select value={editing.group_id} onChange={(e) => upd('group_id', e.target.value)}>
+                <option value="">Байхгүй (×1)</option>
+                {groups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name || 'нэргүй'} (×{g.multiplier})</option>
+                ))}
               </select>
             </label>
             <label className="checkbox-row">
@@ -811,6 +889,11 @@ function FunnelPanel({ demo }) {
                   <span className="qcard__num">{idx + 1}.</span> {q.question}
                   {q.required && <span className="funnel__req"> *</span>}
                   <span className="qtype-badge">{(QTYPES.find((t) => t.v === (q.type || 'single')) || {}).label}</span>
+                  {q.group_id && groups.find((g) => g.id === q.group_id) && (
+                    <span className="qtype-badge">
+                      {groups.find((g) => g.id === q.group_id).name} ×{groups.find((g) => g.id === q.group_id).multiplier}
+                    </span>
+                  )}
                 </strong>
                 <div className="nowrap">
                   <button

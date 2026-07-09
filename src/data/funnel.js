@@ -17,6 +17,11 @@
 //                    undefined = дараалсан дараагийн асуулт
 //                    асуултын id = тухайн асуулт руу үсрэх (салаа)
 //                    'end' = асуулгыг дуусгах
+//
+// Бүлэг (group): асуулт бүрийг бүлэгт хамааруулж болно. Бүлэг тус бүр өөрийн
+// "үржүүлэгч" (multiplier) утгатай — тухайн асуултын сонгосон хариултын оноог
+// энэ үржүүлэгчээр үржүүлээд нийт онооноос нэмнэ. Жишээ: Бүлэг 1 = x1,
+// Бүлэг 2 = x1.5, Бүлэг 3 = x2. Асуулт бүлэггүй бол x1 гэж тооцно.
 // ---------------------------------------------------------------------------
 
 export const funnelConfig = {
@@ -50,6 +55,13 @@ export function bookingSlots(cfg = funnelConfig.booking) {
   for (let t = start; t + cfg.serviceMin <= end; t += step) out.push(fmt(t))
   return out
 }
+
+export const defaultGroups = [
+  { id: 'g1', sort_order: 0, name: 'Бүлэг 1', multiplier: 1 },
+  { id: 'g2', sort_order: 1, name: 'Бүлэг 2', multiplier: 1.5 },
+  { id: 'g3', sort_order: 2, name: 'Бүлэг 3', multiplier: 2 },
+  { id: 'g4', sort_order: 3, name: 'Бүлэг 4', multiplier: 2.5 },
+]
 
 export const defaultQuestions = [
   {
