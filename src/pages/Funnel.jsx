@@ -182,9 +182,16 @@ export default function Funnel() {
     try {
       const name = (findTelegramAnswer() || '').trim()
       if (!name) return
+      // Skip the Telegram question itself in the Q&A list below — it's
+      // already shown as the headline "Телеграм:" line, no need to repeat it.
+      const tgQuestionText = Object.values(byId).find((q) => /телеграм/i.test(q.question || ''))?.question
+      const qaLines = buildAnswerLog()
+        .filter((a) => a.question !== tgQuestionText)
+        .map((a) => `${a.question}: ${a.answer ?? ''}`)
+        .join('\n')
       const noteText = 'Вэб анкетаас бүртгэгдсэн.\n' +
-        'Телеграм: ' + name + '\n' +
-        buildAnswerLog().map((a) => `${a.question}: ${a.answer ?? ''}`).join('\n')
+        'Телеграм: ' + name + '\n\n' +
+        qaLines
       const note = { date: new Date().toISOString().slice(0, 10), text: noteText, by: 'Вэб' }
       const { data: ex } = await supabase.from('customers').select('id,notes').ilike('name', name).limit(1)
       if (ex && ex.length) {
