@@ -242,3 +242,34 @@ on conflict (id) do nothing;
 create unique index if not exists salon_booked_slots_unique
   on public.salon_booked_slots (date, time)
   where status <> 'cancelled';
+
+
+-- ---------------------------------------------------------------------------
+-- Storage bucket for uploaded site images (hero photo, etc.) so staff can
+-- upload a picture straight from the admin instead of needing a URL from
+-- another website. Public to view (so the picture shows on the site),
+-- upload/replace/delete restricted to signed-in staff.
+-- ---------------------------------------------------------------------------
+insert into storage.buckets (id, name, public)
+values ('site-media', 'site-media', true)
+on conflict (id) do nothing;
+
+create policy "Public can view site media"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'site-media');
+
+create policy "Staff can upload site media"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'site-media');
+
+create policy "Staff can update site media"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'site-media');
+
+create policy "Staff can delete site media"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'site-media');

@@ -865,6 +865,7 @@ function HomePanel({ demo }) {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const load = useCallback(async () => {
     if (demo) return
@@ -889,6 +890,23 @@ function HomePanel({ demo }) {
   useEffect(() => { load() }, [load])
 
   const upd = (field, value) => { setForm((s) => ({ ...s, [field]: value })); setSaved(false) }
+
+  async function uploadImage(e) {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-selecting the same file later
+    if (!file) return
+    if (demo) { setError('Зураг байршуулах нь зөвхөн Supabase холбогдсоны дараа ажиллана.'); return }
+    setUploading(true)
+    setError('')
+    const ext = file.name.split('.').pop()
+    const path = `hero-${Date.now()}.${ext}`
+    const { error: upErr } = await supabase.storage.from('site-media').upload(path, file, { upsert: true })
+    if (upErr) { setError(upErr.message); setUploading(false); return }
+    const { data } = supabase.storage.from('site-media').getPublicUrl(path)
+    upd('hero_image', data.publicUrl)
+    setUploading(false)
+  }
+
   const updTestimonial = (i, field, value) =>
     setForm((s) => ({
       ...s,
@@ -956,7 +974,14 @@ function HomePanel({ demo }) {
           </label>
 
           <label>
-            Үндсэн зургийн холбоос (URL)
+            Зураг компьютерээс сонгох
+            <input type="file" accept="image/*" onChange={uploadImage} disabled={uploading || demo} />
+          </label>
+          {uploading && <p className="note">Байршуулж байна…</p>}
+          {demo && <p className="note">Зураг байршуулах нь зөвхөн Supabase холбогдсоны дараа ажиллана.</p>}
+
+          <label>
+            Эсвэл зургийн холбоос (URL)
             <input
               value={form.hero_image}
               placeholder="https://…"
