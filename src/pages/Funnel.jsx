@@ -1,53 +1,18 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { brand } from '../data/content.js'
-import { funnelConfig, bookingSlots } from '../data/funnel.js'
+import { funnelConfig } from '../data/funnel.js'
 import { useFunnel } from '../lib/useFunnel.js'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
 
 export default function Funnel() {
   const { questions, groups, loading } = useFunnel()
   const groupById = Object.fromEntries((groups || []).map((g) => [g.id, g]))
-  const [phase, setPhase] = useState('intro') // intro | question | contact | declined | done
+  const [phase, setPhase] = useState('intro') // intro | question | declined | done
   const [currentId, setCurrentId] = useState(null)
   const [history, setHistory] = useState([])
   const [answers, setAnswers] = useState({}) // single: index | multi: [indexes] | text: string
-  const [contact, setContact] = useState({ name: '', phone: '', date: '', time: '' })
-  const [forcePay, setForcePay] = useState(false)
   const [saving, setSaving] = useState(false)
-  const [takenSlots, setTakenSlots] = useState([]) // times already booked for the chosen date
-  const [loadingSlots, setLoadingSlots] = useState(false)
-
-  // When the chosen date changes, load which time slots are already taken.
-  // Only the date + time are read here (no personal details), so it's safe.
-  useEffect(() => {
-    let alive = true
-    if (!supabaseConfigured || !contact.date) { setTakenSlots([]); return }
-    setLoadingSlots(true)
-    supabase
-      .from('salon_booked_slots')
-      .select('time')
-      .eq('date', contact.date)
-      .neq('status', 'cancelled')
-      .then(({ data }) => {
-        if (!alive) return
-        const taken = (data || []).map((r) => r.time)
-        setTakenSlots(taken)
-        setLoadingSlots(false)
-        // If the currently selected time just became unavailable, clear it.
-        setContact((c) => (taken.includes(c.time) ? { ...c, time: '' } : c))
-      })
-    return () => { alive = false }
-  }, [contact.date])
-
-  // Record a booked slot (safe table: date/time/status only) once paid.
-  async function reserveSlot() {
-    if (!supabaseConfigured || !contact.date || !contact.time) return
-    await supabase.from('salon_booked_slots').insert({ date: contact.date, time: contact.time, status: 'booked' })
-  }
-
-  const slots = bookingSlots()
-  const todayStr = new Date().toISOString().slice(0, 10)
 
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
   const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
@@ -65,7 +30,7 @@ export default function Funnel() {
   function goTo(nextId) {
     setHistory((h) => [...h, current.id])
     if (nextId) setCurrentId(nextId)
-    else setPhase('contact')
+    else finish(false)
   }
 
   function sequentialNextId() {
@@ -79,13 +44,13 @@ export default function Funnel() {
     return sequentialNextId()
   }
 
-  // Advance after a single choice. A choice with next==='pay' jumps straight
-  // to the booking + prepayment step, skipping the remaining questions.
+  // Advance after a single choice. A choice with next==='pay' finishes the
+  // questionnaire immediately (treated as automatically qualified), skipping
+  // whatever questions remain.
   function advanceForChoice(choice) {
     if (choice.next === 'pay') {
-      setForcePay(true)
       setHistory((h) => [...h, current.id])
-      setPhase('contact')
+      finish(true)
       return
     }
     goTo(computeNext(choice))
@@ -119,12 +84,6 @@ export default function Funnel() {
   }
 
   function back() {
-    if (phase === 'contact') {
-      const last = history[history.length - 1]
-      if (last) { setHistory((h) => h.slice(0, -1)); setCurrentId(last); setPhase('question') }
-      else setPhase('intro')
-      return
-    }
     if (history.length) {
       const last = history[history.length - 1]
       setHistory((h) => h.slice(0, -1))
@@ -174,7 +133,7 @@ export default function Funnel() {
   }
 
   function buildAnswerLog() {
-    const answerLog = Object.entries(answers).map(([qid, val]) => {
+    return Object.entries(answers).map(([qid, val]) => {
       const q = byId[qid]
       const t = q?.type || 'single'
       let answer
@@ -182,24 +141,6 @@ export default function Funnel() {
       else if (t === 'multi') answer = (Array.isArray(val) ? val.map((i) => q.choices[i]?.label).filter(Boolean) : []).join(', ')
       else answer = val || null
       return { question: q?.question ?? qid, answer }
-    })
-    // Record the chosen booking time alongside the answers.
-    if (contact.date || contact.time) {
-      answerLog.push({ question: 'Захиалсан цаг', answer: `${contact.date || ''} ${contact.time || ''}`.trim() })
-    }
-    return answerLog
-  }
-
-  async function saveSubmission(qualified, paymentStatus) {
-    if (!supabaseConfigured) return
-    await supabase.from('salon_funnel_submissions').insert({
-      name: contact.name,
-      phone: contact.phone,
-      answers: buildAnswerLog(),
-      qualified,
-      payment_status: paymentStatus,
-      amount: null,
-      score: computeScore(),
     })
   }
 
@@ -220,23 +161,30 @@ export default function Funnel() {
     return null
   }
 
+  async function saveSubmission(qualified) {
+    if (!supabaseConfigured) return
+    await supabase.from('salon_funnel_submissions').insert({
+      name: findTelegramAnswer(),
+      phone: null,
+      answers: buildAnswerLog(),
+      qualified,
+      payment_status: 'n/a',
+      amount: null,
+      score: computeScore(),
+    })
+  }
+
   // Register the person in the manager app's customer journal (customers
   // table), keyed by their Telegram username so repeat visits under the same
-  // handle merge into one customer instead of duplicating. Falls back to the
-  // typed name if no Telegram question was answered.
-  // existing name → append a note; new name → create with a unique SLA code.
+  // handle merge into one customer instead of duplicating.
   async function createJournalCustomer() {
     if (!supabaseConfigured) return
     try {
-      const telegramName = findTelegramAnswer()
-      const name = (telegramName || contact.name || '').trim()
+      const name = (findTelegramAnswer() || '').trim()
       if (!name) return
       const noteText = 'Вэб анкетаас бүртгэгдсэн.\n' +
-        'Нэр: ' + (contact.name || '—') + '\n' +
-        (telegramName ? 'Телеграм: ' + telegramName + '\n' : '') +
-        'Утас: ' + (contact.phone || '—') +
-        '\nЗахиалсан цаг: ' + `${contact.date || ''} ${contact.time || ''}`.trim() + '\n' +
-        buildAnswerLog().filter((a) => a.question !== 'Захиалсан цаг').map((a) => `${a.question}: ${a.answer ?? ''}`).join('\n')
+        'Телеграм: ' + name + '\n' +
+        buildAnswerLog().map((a) => `${a.question}: ${a.answer ?? ''}`).join('\n')
       const note = { date: new Date().toISOString().slice(0, 10), text: noteText, by: 'Вэб' }
       const { data: ex } = await supabase.from('customers').select('id,notes').ilike('name', name).limit(1)
       if (ex && ex.length) {
@@ -252,26 +200,22 @@ export default function Funnel() {
     } catch { /* best effort — the submission itself is already saved */ }
   }
 
-  async function submitContact(e) {
-    e.preventDefault()
+  // Called when the questionnaire ends (no more questions, or a choice
+  // jumped straight to the end). `force` = treat as qualified regardless of
+  // disqualifying answers (used by the "pay" branch).
+  async function finish(force) {
     if (saving) return
-    if (forcePay || evaluate()) {
-      setSaving(true)
-      await saveSubmission(true, 'n/a')
-      await reserveSlot()
-      await createJournalCustomer()
-      setSaving(false)
-      setPhase('done')
-    } else {
-      saveSubmission(false, 'n/a')
-      setPhase('declined')
-    }
+    setSaving(true)
+    const qualified = force || evaluate()
+    await saveSubmission(qualified)
+    if (qualified) await createJournalCustomer()
+    setSaving(false)
+    setPhase(qualified ? 'done' : 'declined')
   }
 
   const progress =
     phase === 'intro' ? 0
-    : phase === 'question' ? Math.min(95, Math.round(((history.length + 1) / (ordered.length + 1)) * 100))
-    : phase === 'contact' ? 92
+    : phase === 'question' ? Math.min(95, Math.round(((history.length + 1) / (ordered.length || 1)) * 100))
     : 100
 
   return (
@@ -307,6 +251,7 @@ export default function Funnel() {
                       key={ci}
                       className={`choice ${answers[current.id] === ci ? 'is-selected' : ''}`}
                       onClick={() => pickSingle(ci)}
+                      disabled={saving}
                     >
                       <span className="choice__dot" />
                       <span className="choice__text">
@@ -351,61 +296,12 @@ export default function Funnel() {
             <div className="funnel__nav">
               <button className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
               {qtype !== 'single' && (
-                <button className="btn funnel__cta" disabled={!canAdvance} onClick={advanceSequential}>
-                  Цааш →
+                <button className="btn funnel__cta" disabled={!canAdvance || saving} onClick={advanceSequential}>
+                  {saving ? 'Илгээж байна…' : 'Цааш →'}
                 </button>
               )}
             </div>
           </div>
-        ) : phase === 'contact' ? (
-          <form className="funnel__screen" onSubmit={submitContact}>
-            <h2>Цаг сонгож, мэдээллээ үлдээнэ үү</h2>
-            <p className="funnel__lead">Захиалгаа баталгаажуулахын тулд нэр, утас, зочлох цагаа сонгоно уу.</p>
-            <label className="funnel__label">
-              Нэр
-              <input required value={contact.name} onChange={(e) => setContact({ ...contact, name: e.target.value })} />
-            </label>
-            <label className="funnel__label">
-              Утас
-              <input required value={contact.phone} onChange={(e) => setContact({ ...contact, phone: e.target.value })} />
-            </label>
-            <label className="funnel__label">
-              Өдөр
-              <input type="date" required min={todayStr} value={contact.date} onChange={(e) => setContact({ ...contact, date: e.target.value, time: '' })} />
-            </label>
-
-            {contact.date && (
-              <div className="slotbox">
-                <div className="slotbox__head">
-                  <span>Цаг сонгох</span>
-                  {loadingSlots && <span className="slotbox__loading">шалгаж байна…</span>}
-                </div>
-                <div className="slotgrid">
-                  {slots.map((s) => {
-                    const taken = takenSlots.includes(s)
-                    return (
-                      <button
-                        type="button"
-                        key={s}
-                        className={`slot ${contact.time === s ? 'is-selected' : ''} ${taken ? 'is-taken' : ''}`}
-                        disabled={taken}
-                        onClick={() => setContact({ ...contact, time: s })}
-                      >
-                        {s}
-                        {taken && <span className="slot__tag">Захиалсан</span>}
-                      </button>
-                    )
-                  })}
-                </div>
-                <p className="funnel__hint">Ажлын цаг: {funnelConfig.booking.open}–{funnelConfig.booking.close} · Үйлчилгээ {funnelConfig.booking.serviceMin} мин</p>
-              </div>
-            )}
-
-            <div className="funnel__nav">
-              <button type="button" className="btn btn--ghost btn--small" onClick={back}>← Буцах</button>
-              <button type="submit" className="btn funnel__cta" disabled={!contact.date || !contact.time || saving}>{saving ? 'Илгээж байна…' : 'Захиалах →'}</button>
-            </div>
-          </form>
         ) : phase === 'declined' ? (
           <div className="funnel__screen funnel__center">
             <div className="funnel__badge">!</div>
