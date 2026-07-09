@@ -5,10 +5,14 @@
 // Асуулт бүрд:
 //   type      — 'single' (нэг сонголт) | 'multi' (олон сонголт) | 'text' (бичих)
 //   required  — true бол хариулахгүйгээр цааш явж болохгүй
-//   choices   — [{ label, disqualifies, next }]  (single/multi-д хэрэглэнэ)
+//   choices   — [{ label, disqualifies, points, next }]  (single/multi-д хэрэглэнэ)
 //
 // Сонголтын талбарууд:
 //   disqualifies — true бол сонгосон үед төлбөрийн цонх гарахгүй
+//   points       — тухайн хариултын оноо (жишээ нь 5 сонголттой асуултад
+//                   1-ээс 5 хүртэл оноо өгч болно). Сонгосон бүх хариултын
+//                   оноог нийлбэрлээд захиалгын хамт хадгална — админ
+//                   (Формын хариу) хэсэгт нийт оноог харна.
 //   next         — дараа нь очих асуулт (зөвхөн single):
 //                    undefined = дараалсан дараагийн асуулт
 //                    асуултын id = тухайн асуулт руу үсрэх (салаа)
@@ -90,9 +94,25 @@ export const defaultQuestions = [
     ],
   },
   {
+    // ОНОО (points) жишээ: 5 сонголт, тус бүр 1-ээс 5 хүртэл оноотой.
+    id: 'q-urgency',
+    sort_order: 3,
+    active: true,
+    type: 'single',
+    required: true,
+    question: 'Одоо ямар түвшний тайвшрал хэрэгтэй байна вэ?',
+    choices: [
+      { label: 'Бага зэрэг — зүгээр амрахыг хүсэж байна', disqualifies: false, points: 1 },
+      { label: 'Дунд зэрэг ядарсан байна', disqualifies: false, points: 2 },
+      { label: 'Нэлээд стресстэй, амралт хэрэгтэй', disqualifies: false, points: 3 },
+      { label: 'Их ядарсан, яаралтай амрах хэрэгтэй', disqualifies: false, points: 4 },
+      { label: 'Туйлдаа хүрсэн — яг одоо тусламж хэрэгтэй', disqualifies: false, points: 5 },
+    ],
+  },
+  {
     // ОЛОН СОНГОЛТ (multi) — олон хайрцаг тэмдэглэж болно.
     id: 'q-goals',
-    sort_order: 3,
+    sort_order: 4,
     active: true,
     type: 'multi',
     required: false,
@@ -106,7 +126,7 @@ export const defaultQuestions = [
   },
   {
     id: 'q-when',
-    sort_order: 4,
+    sort_order: 5,
     active: true,
     type: 'single',
     required: true,
@@ -120,7 +140,7 @@ export const defaultQuestions = [
   {
     // ТЕКСТ БИЧИХ (text) — чөлөөт бичвэр.
     id: 'q-note',
-    sort_order: 5,
+    sort_order: 6,
     active: true,
     type: 'text',
     required: false,
@@ -129,7 +149,7 @@ export const defaultQuestions = [
   },
   {
     id: 'q-deposit',
-    sort_order: 6,
+    sort_order: 7,
     active: true,
     type: 'single',
     required: true,
@@ -141,7 +161,7 @@ export const defaultQuestions = [
   },
   {
     id: 'q-people',
-    sort_order: 7,
+    sort_order: 8,
     active: true,
     type: 'single',
     required: true,

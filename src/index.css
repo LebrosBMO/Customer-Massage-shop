@@ -464,6 +464,8 @@ code { background: var(--bg-alt); padding: 2px 7px; border-radius: 6px; color: v
 .choice-edit > input { flex: 1 1 160px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px; color: var(--text); font-family: inherit; }
 .choice-edit__next { display: flex; align-items: center; gap: 5px; color: var(--gold-soft); font-size: 0.8rem; }
 .choice-edit__next select { background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 8px; color: var(--text); font-family: inherit; max-width: 170px; }
+.choice-edit__points { display: flex; align-items: center; gap: 5px; color: var(--gold-soft); font-size: 0.8rem; white-space: nowrap; }
+.choice-edit__points input { width: 54px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 7px 8px; color: var(--text); font-family: inherit; }
 .choice-edit__flag { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 0.8rem; white-space: nowrap; cursor: pointer; }
 .choice-edit__flag input { width: auto; }
 .choice-explain { width: 100%; background: var(--panel); border: 1px dashed var(--line); border-radius: 9px; padding: 8px 12px; color: var(--text); font-family: inherit; font-size: 0.82rem; resize: vertical; }

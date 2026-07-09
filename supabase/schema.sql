@@ -160,8 +160,12 @@ create table if not exists public.salon_funnel_submissions (
   answers jsonb,
   qualified boolean,
   payment_status text not null default 'pending',
-  amount int
+  amount int,
+  score int
 );
+
+-- If the table already existed, make sure the score column is present.
+alter table public.salon_funnel_submissions add column if not exists score int;
 
 alter table public.salon_funnel_submissions enable row level security;
 

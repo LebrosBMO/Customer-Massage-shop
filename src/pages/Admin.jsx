@@ -528,8 +528,8 @@ const blankQuestion = () => ({
   type: 'single',
   required: true,
   choices: [
-    { label: '', disqualifies: false },
-    { label: '', disqualifies: false },
+    { label: '', disqualifies: false, points: 0 },
+    { label: '', disqualifies: false, points: 0 },
   ],
   active: true,
   sort_order: 0,
@@ -572,7 +572,7 @@ function FunnelPanel({ demo }) {
       ...q,
       type: q.type || 'single',
       required: q.required ?? false,
-      choices: (q.choices || []).map((c) => ({ ...c })),
+      choices: (q.choices || []).map((c) => ({ points: 0, ...c })),
     })
   }
 
@@ -583,7 +583,7 @@ function FunnelPanel({ demo }) {
       choices: s.choices.map((c, ci) => (ci === i ? { ...c, [field]: value } : c)),
     }))
   const addChoice = () =>
-    setEditing((s) => ({ ...s, choices: [...s.choices, { label: '', disqualifies: false }] }))
+    setEditing((s) => ({ ...s, choices: [...s.choices, { label: '', disqualifies: false, points: 0 }] }))
   const removeChoice = (i) =>
     setEditing((s) => ({ ...s, choices: s.choices.filter((_, ci) => ci !== i) }))
 
@@ -596,7 +596,9 @@ function FunnelPanel({ demo }) {
       question: editing.question,
       type: editing.type || 'single',
       required: !!editing.required,
-      choices: editing.type === 'text' ? [] : editing.choices.filter((c) => c.label.trim()),
+      choices: editing.type === 'text'
+        ? []
+        : editing.choices.filter((c) => c.label.trim()).map((c) => ({ ...c, points: Number(c.points) || 0 })),
       active: editing.active,
       sort_order: Number(editing.sort_order) || 0,
     }
@@ -716,6 +718,15 @@ function FunnelPanel({ demo }) {
                         </select>
                       </label>
                     )}
+                    <label className="choice-edit__points" title="Энэ хариултын оноо (жишээ: 1–5)">
+                      <span>★</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={c.points ?? 0}
+                        onChange={(e) => updChoice(i, 'points', e.target.value)}
+                      />
+                    </label>
                     <label className="choice-edit__flag" title="Сонгосон үед төлбөр гарахгүй">
                       <input
                         type="checkbox"
@@ -798,7 +809,7 @@ function FunnelPanel({ demo }) {
                       key={ci}
                       className={`qchoice ${c.disqualifies ? 'qchoice--bad' : ''} ${c.next ? 'qchoice--branch' : ''}`}
                     >
-                      {c.label}{c.disqualifies && ' ✕'}{target && ` → ${target}`}
+                      {c.label}{c.points > 0 && ` ★${c.points}`}{c.disqualifies && ' ✕'}{target && ` → ${target}`}
                     </span>
                   )
                 })}

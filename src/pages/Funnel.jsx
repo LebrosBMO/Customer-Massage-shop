@@ -163,6 +163,21 @@ export default function Funnel() {
     })
   }
 
+  // Sum the points of every selected choice (single: one choice, multi: all
+  // ticked choices). Text answers and unanswered questions contribute 0.
+  function computeScore() {
+    return Object.entries(answers).reduce((total, [qid, val]) => {
+      const q = byId[qid]
+      if (!q) return total
+      const t = q.type || 'single'
+      if (t === 'single') return total + (Number(q.choices[val]?.points) || 0)
+      if (t === 'multi' && Array.isArray(val)) {
+        return total + val.reduce((s, i) => s + (Number(q.choices[i]?.points) || 0), 0)
+      }
+      return total
+    }, 0)
+  }
+
   function buildAnswerLog() {
     const answerLog = Object.entries(answers).map(([qid, val]) => {
       const q = byId[qid]
@@ -189,6 +204,7 @@ export default function Funnel() {
       qualified,
       payment_status: paymentStatus,
       amount: null,
+      score: computeScore(),
     })
   }
 
