@@ -365,12 +365,18 @@ function ServicesPanel({ demo }) {
       return
     }
 
-    const { error } = isNew
-      ? await supabase.from('salon_services').insert(payload)
-      : await supabase.from('salon_services').update(payload).eq('id', editing.id)
+    // .select() returns the affected rows — if the session expired, RLS
+    // silently matches 0 rows with no error, so we must check the count.
+    const { data, error } = isNew
+      ? await supabase.from('salon_services').insert(payload).select('id')
+      : await supabase.from('salon_services').update(payload).eq('id', editing.id).select('id')
 
     setSaving(false)
     if (error) { setError(error.message); return }
+    if (!data || data.length === 0) {
+      setError('Хадгалагдсангүй — таны нэвтрэлтийн хугацаа дууссан байж магадгүй. Гараад дахин нэвтэрч, дараа нь дахин оролдоно уу.')
+      return
+    }
     setEditing(null)
     load()
   }
@@ -381,8 +387,9 @@ function ServicesPanel({ demo }) {
       setRows((rs) => rs.filter((r) => r.id !== svc.id))
       return
     }
-    const { error } = await supabase.from('salon_services').delete().eq('id', svc.id)
+    const { data, error } = await supabase.from('salon_services').delete().eq('id', svc.id).select('id')
     if (error) setError(error.message)
+    else if (!data || data.length === 0) setError('Устгагдсангүй — гараад дахин нэвтэрч үзнэ үү.')
     else load()
   }
 
@@ -390,8 +397,9 @@ function ServicesPanel({ demo }) {
     const next = !svc.active
     setRows((rs) => rs.map((r) => (r.id === svc.id ? { ...r, active: next } : r)))
     if (demo) return
-    const { error } = await supabase.from('salon_services').update({ active: next }).eq('id', svc.id)
+    const { data, error } = await supabase.from('salon_services').update({ active: next }).eq('id', svc.id).select('id')
     if (error) { setError(error.message); load() }
+    else if (!data || data.length === 0) { setError('Өөрчлөгдсөнгүй — гараад дахин нэвтэрч үзнэ үү.'); load() }
   }
 
   const upd = (field, value) => setEditing((s) => ({ ...s, [field]: value }))
@@ -604,11 +612,17 @@ function FunnelPanel({ demo }) {
       return
     }
 
-    const { error } = isNew
-      ? await supabase.from('salon_funnel_questions').insert(payload)
-      : await supabase.from('salon_funnel_questions').update(payload).eq('id', editing.id)
+    // .select() returns the affected rows — if the session expired, RLS
+    // silently matches 0 rows with no error, so we must check the count.
+    const { data, error } = isNew
+      ? await supabase.from('salon_funnel_questions').insert(payload).select('id')
+      : await supabase.from('salon_funnel_questions').update(payload).eq('id', editing.id).select('id')
     setSaving(false)
     if (error) { setError(error.message); return }
+    if (!data || data.length === 0) {
+      setError('Хадгалагдсангүй — таны нэвтрэлтийн хугацаа дууссан байж магадгүй. Гараад дахин нэвтэрч, дараа нь дахин оролдоно уу.')
+      return
+    }
     setEditing(null)
     load()
   }
@@ -616,8 +630,9 @@ function FunnelPanel({ demo }) {
   async function remove(q) {
     if (!window.confirm('Энэ асуултыг устгах уу?')) return
     if (demo) { setRows((rs) => rs.filter((r) => r.id !== q.id)); return }
-    const { error } = await supabase.from('salon_funnel_questions').delete().eq('id', q.id)
+    const { data, error } = await supabase.from('salon_funnel_questions').delete().eq('id', q.id).select('id')
     if (error) setError(error.message)
+    else if (!data || data.length === 0) setError('Устгагдсангүй — гараад дахин нэвтэрч үзнэ үү.')
     else load()
   }
 
@@ -625,8 +640,9 @@ function FunnelPanel({ demo }) {
     const next = !q.active
     setRows((rs) => rs.map((r) => (r.id === q.id ? { ...r, active: next } : r)))
     if (demo) return
-    const { error } = await supabase.from('salon_funnel_questions').update({ active: next }).eq('id', q.id)
+    const { data, error } = await supabase.from('salon_funnel_questions').update({ active: next }).eq('id', q.id).select('id')
     if (error) { setError(error.message); load() }
+    else if (!data || data.length === 0) { setError('Өөрчлөгдсөнгүй — гараад дахин нэвтэрч үзнэ үү.'); load() }
   }
 
   return (
