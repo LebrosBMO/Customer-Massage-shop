@@ -1,5 +1,4 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { brand } from '../data/content.js'
 import { funnelConfig } from '../data/funnel.js'
 import { useFunnel } from '../lib/useFunnel.js'
@@ -230,7 +229,6 @@ export default function Funnel() {
       <div className="funnel__card">
         <div className="funnel__top">
           <span className="funnel__brand">✦ {brand.name}</span>
-          <Link to="/" className="funnel__exit">Сайт үзэх</Link>
         </div>
 
         {phase !== 'intro' && phase !== 'done' && phase !== 'declined' && (
@@ -314,14 +312,12 @@ export default function Funnel() {
             <div className="funnel__badge">!</div>
             <h1>{funnelConfig.declineTitle}</h1>
             <p className="funnel__lead">{funnelConfig.declineText}</p>
-            <Link to="/" className="btn btn--ghost">Үйлчилгээ үзэх</Link>
           </div>
         ) : (
           <div className="funnel__screen funnel__center">
             <div className="funnel__badge funnel__badge--ok">✓</div>
             <h1>{funnelConfig.doneTitle}</h1>
             <p className="funnel__lead">{funnelConfig.doneText}</p>
-            <Link to="/" className="btn">Нүүр хуудас</Link>
           </div>
         )}
       </div>
