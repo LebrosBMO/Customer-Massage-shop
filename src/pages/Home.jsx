@@ -1,18 +1,20 @@
 import { Link } from 'react-router-dom'
-import { brand, testimonials } from '../data/content.js'
+import { brand } from '../data/content.js'
 import { useServices } from '../lib/useServices.js'
+import { useSiteContent } from '../lib/useSiteContent.js'
 
 export default function Home() {
   const { services } = useServices()
+  const { content: site } = useSiteContent()
 
   return (
     <>
-      <section className="hero">
+      <section className="hero" style={{ backgroundImage: `url(${site.hero_image})` }}>
         <div className="hero__overlay" />
         <div className="container hero__content">
-          <p className="hero__eyebrow">{brand.tagline}</p>
+          <p className="hero__eyebrow">{site.tagline}</p>
           <h1>{brand.name}</h1>
-          <p className="hero__intro">{brand.intro}</p>
+          <p className="hero__intro">{site.intro}</p>
           <div className="hero__actions">
             <Link to="/start" className="btn">Форум бөглөх</Link>
             <Link to="/services" className="btn btn--ghost">Үйлчилгээ үзэх</Link>
@@ -53,7 +55,7 @@ export default function Home() {
             <h2>Зочдын сэтгэгдэл</h2>
           </header>
           <div className="grid grid--3">
-            {testimonials.map((t, i) => (
+            {(site.testimonials || []).map((t, i) => (
               <blockquote key={i} className="quote">
                 <p>“{t.text}”</p>
                 <cite>— {t.name}</cite>

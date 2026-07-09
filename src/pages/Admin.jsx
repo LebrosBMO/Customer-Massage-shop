@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase, supabaseConfigured } from '../lib/supabase.js'
-import { brand, locations } from '../data/content.js'
+import { brand, locations, testimonials as staticTestimonials } from '../data/content.js'
 import { staticServiceList } from '../lib/useServices.js'
 import { defaultQuestions } from '../data/funnel.js'
 
@@ -175,6 +175,9 @@ function Dashboard({ demo, session }) {
         <button className={tab === 'funnel' ? 'is-active' : ''} onClick={() => setTab('funnel')}>
           Асуулга
         </button>
+        <button className={tab === 'home' ? 'is-active' : ''} onClick={() => setTab('home')}>
+          Нүүр хуудас
+        </button>
       </div>
 
       {demo && (
@@ -187,6 +190,7 @@ function Dashboard({ demo, session }) {
       {tab === 'reservations' && <ReservationsPanel demo={demo} />}
       {tab === 'services' && <ServicesPanel demo={demo} />}
       {tab === 'funnel' && <FunnelPanel demo={demo} />}
+      {tab === 'home' && <HomePanel demo={demo} />}
     </div>
   )
 }
@@ -840,6 +844,162 @@ function FunnelPanel({ demo }) {
             </div>
           ))}
         </div>
+      )}
+    </>
+  )
+}
+
+const DEFAULT_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=1600&q=70'
+
+const blankHomeContent = () => ({
+  tagline: brand.tagline,
+  intro: brand.intro,
+  hero_image: DEFAULT_HERO_IMAGE,
+  testimonials: staticTestimonials.map((t) => ({ ...t })),
+})
+
+function HomePanel({ demo }) {
+  const [form, setForm] = useState(blankHomeContent())
+  const [loading, setLoading] = useState(!demo)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
+
+  const load = useCallback(async () => {
+    if (demo) return
+    setLoading(true)
+    const { data, error } = await supabase
+      .from('salon_site_content')
+      .select('*')
+      .eq('id', 1)
+      .maybeSingle()
+    if (error) setError(error.message)
+    else if (data) {
+      setForm({
+        tagline: data.tagline || '',
+        intro: data.intro || '',
+        hero_image: data.hero_image || DEFAULT_HERO_IMAGE,
+        testimonials: Array.isArray(data.testimonials) ? data.testimonials : [],
+      })
+    }
+    setLoading(false)
+  }, [demo])
+
+  useEffect(() => { load() }, [load])
+
+  const upd = (field, value) => { setForm((s) => ({ ...s, [field]: value })); setSaved(false) }
+  const updTestimonial = (i, field, value) =>
+    setForm((s) => ({
+      ...s,
+      testimonials: s.testimonials.map((t, ti) => (ti === i ? { ...t, [field]: value } : t)),
+    }))
+  const addTestimonial = () =>
+    setForm((s) => ({ ...s, testimonials: [...s.testimonials, { name: '', text: '' }] }))
+  const removeTestimonial = (i) =>
+    setForm((s) => ({ ...s, testimonials: s.testimonials.filter((_, ti) => ti !== i) }))
+
+  async function save(e) {
+    e.preventDefault()
+    setSaving(true)
+    setError('')
+    setSaved(false)
+    const payload = {
+      id: 1,
+      tagline: form.tagline,
+      intro: form.intro,
+      hero_image: form.hero_image || DEFAULT_HERO_IMAGE,
+      testimonials: form.testimonials.filter((t) => t.name.trim() || t.text.trim()),
+    }
+
+    if (demo) {
+      setSaving(false)
+      setSaved(true)
+      return
+    }
+
+    const { data, error } = await supabase
+      .from('salon_site_content')
+      .upsert(payload)
+      .select('id')
+    setSaving(false)
+    if (error) { setError(error.message); return }
+    if (!data || data.length === 0) {
+      setError('Хадгалагдсангүй — таны нэвтрэлтийн хугацаа дууссан байж магадгүй. Гараад дахин нэвтэрч үзнэ үү.')
+      return
+    }
+    setSaved(true)
+  }
+
+  return (
+    <>
+      <div className="banner banner--info">
+        Энд нүүр хуудасны гарчиг, танилцуулга, үндсэн зураг болон зочдын сэтгэгдлийг засна. Өөрчлөлт
+        хадгалсны дараа шууд нүүр хуудсанд харагдана.
+      </div>
+
+      {error && <div className="banner banner--error">{error}</div>}
+      {saved && <div className="banner banner--success">Хадгалагдлаа ✓</div>}
+
+      {loading ? (
+        <p>Ачаалж байна…</p>
+      ) : (
+        <form className="form" onSubmit={save}>
+          <label>
+            Гарчгийн доорх мөр (tagline)
+            <input value={form.tagline} onChange={(e) => upd('tagline', e.target.value)} />
+          </label>
+
+          <label>
+            Танилцуулга текст
+            <textarea rows={4} value={form.intro} onChange={(e) => upd('intro', e.target.value)} />
+          </label>
+
+          <label>
+            Үндсэн зургийн холбоос (URL)
+            <input
+              value={form.hero_image}
+              placeholder="https://…"
+              onChange={(e) => upd('hero_image', e.target.value)}
+            />
+          </label>
+          {form.hero_image && (
+            <div
+              className="svc-thumb"
+              style={{ width: 140, height: 88, backgroundImage: `url(${form.hero_image})` }}
+            />
+          )}
+
+          <div className="choices-edit">
+            <span className="choices-edit__title">Зочдын сэтгэгдэл</span>
+            {form.testimonials.map((t, i) => (
+              <div key={i} className="choice-edit-wrap">
+                <div className="choice-edit">
+                  <input
+                    placeholder="Нэр (жиш: А. К.)"
+                    value={t.name}
+                    onChange={(e) => updTestimonial(i, 'name', e.target.value)}
+                    style={{ flex: '0 0 140px' }}
+                  />
+                  <input
+                    placeholder="Сэтгэгдэл"
+                    value={t.text}
+                    onChange={(e) => updTestimonial(i, 'text', e.target.value)}
+                  />
+                  <button type="button" className="link-btn link-btn--danger" onClick={() => removeTestimonial(i)}>✕</button>
+                </div>
+              </div>
+            ))}
+            <button type="button" className="link-btn" onClick={addTestimonial}>+ Сэтгэгдэл нэмэх</button>
+          </div>
+
+          <div className="admin-actions">
+            <button className="btn btn--small" type="submit" disabled={saving}>
+              {saving ? 'Хадгалж байна…' : 'Хадгалах'}
+            </button>
+            {!demo && <button type="button" className="btn btn--small btn--ghost" onClick={load}>Сэргээх</button>}
+          </div>
+        </form>
       )}
     </>
   )

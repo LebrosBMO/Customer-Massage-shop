@@ -202,6 +202,42 @@ create policy "Staff can manage booked slots"
 create policy "Staff can delete booked slots"
   on public.salon_booked_slots for delete to authenticated using (true);
 
+
+-- ---------------------------------------------------------------------------
+-- Site content: editable homepage text + hero image + testimonials
+-- (/admin > Нүүр хуудас tab). Single row, id fixed at 1.
+-- ---------------------------------------------------------------------------
+create table if not exists public.salon_site_content (
+  id int primary key default 1,
+  tagline text,
+  intro text,
+  hero_image text,
+  testimonials jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.salon_site_content enable row level security;
+
+create policy "Public can read site content"
+  on public.salon_site_content for select to anon using (true);
+create policy "Staff can read site content"
+  on public.salon_site_content for select to authenticated using (true);
+create policy "Staff can insert site content"
+  on public.salon_site_content for insert to authenticated with check (true);
+create policy "Staff can update site content"
+  on public.salon_site_content for update to authenticated using (true) with check (true);
+
+-- Seed the single row with the current defaults so a fresh site is not empty.
+insert into public.salon_site_content (id, tagline, intro, hero_image, testimonials)
+values (
+  1,
+  'Мэдрэхүйн амралтын дархан орон зай',
+  'Whity Studio нь гүн амралт, ухамсартай бөгөөд мэдрэхүйн таашаалд зориулсан хувийн массажийн студи юм. Туршлагатай мастерууд маань өдөр тутмын яаруу сандрангаас ангижрах, лаан гэрэлт тайван орон зайд таныг угтан авна.',
+  'https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=1600&q=70',
+  '[{"name":"А. К.","text":"Сүүлийн хэдэн жилд хамгийн их тайвширсан мөч. Тайван, дулаан, чин сэтгэлийн халамжтай."},{"name":"М. Р.","text":"Гайхалтай орчин, анхааралтай мастерууд. Би өөр хүн болсон мэт сэтгэлээр гарсан."},{"name":"Ж. П.","text":"Нууцлалтай, мэргэжлийн, мартагдашгүй. Би заавал дахин ирнэ."}]'::jsonb
+)
+on conflict (id) do nothing;
+
 -- Prevent two active bookings for the same date + time (defense-in-depth).
 create unique index if not exists salon_booked_slots_unique
   on public.salon_booked_slots (date, time)

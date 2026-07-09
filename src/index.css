@@ -149,7 +149,6 @@ img { max-width: 100%; display: block; }
   min-height: 86vh;
   display: flex;
   align-items: center;
-  background-image: url('https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?w=1600&q=70');
   background-size: cover;
   background-position: center;
   filter: grayscale(0.55);
