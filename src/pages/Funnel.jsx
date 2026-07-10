@@ -192,17 +192,10 @@ export default function Funnel() {
         'Телеграм: ' + name + '\n\n' +
         qaLines
       const note = { date: new Date().toISOString().slice(0, 10), text: noteText, by: 'Вэб' }
-      const { data: ex } = await supabase.from('customers').select('id,notes').ilike('name', name).limit(1)
-      if (ex && ex.length) {
-        const c = ex[0]
-        await supabase.from('customers').update({ notes: [...(Array.isArray(c.notes) ? c.notes : []), note] }).eq('id', c.id)
-        return
-      }
-      const { data: codes } = await supabase.from('customers').select('code')
-      const used = new Set((codes || []).map((r) => r.code))
-      let code
-      do { code = 'SLA-' + Math.floor(1000 + Math.random() * 9000) } while (used.has(code))
-      await supabase.from('customers').insert({ id: 'cu' + Date.now(), code, name, notes: [note] })
+      // Goes through a security-definer RPC (not direct table access) so the
+      // public anon key never needs read/write on the shared customers table —
+      // see the register_funnel_lead function in the lockdown SQL.
+      await supabase.rpc('register_funnel_lead', { p_name: name, p_note: note })
     } catch { /* best effort — the submission itself is already saved */ }
   }
 
