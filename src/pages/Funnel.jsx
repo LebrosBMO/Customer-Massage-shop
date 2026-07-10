@@ -188,9 +188,11 @@ export default function Funnel() {
         .filter((a) => a.question !== tgQuestionText)
         .map((a, i) => `${i + 1}) ${a.question}\n    → ${a.answer || '—'}`)
         .join('\n\n')
+      const score = computeScore()
       const noteText = 'Вэб анкетаас бүртгэгдсэн.\n' +
-        'Телеграм: ' + name + '\n\n' +
-        qaLines
+        'Телеграм: ' + name + '\n' +
+        (score > 0 ? '★ Оноо: ' + score + '\n' : '') +
+        '\n' + qaLines
       const note = { date: new Date().toISOString().slice(0, 10), text: noteText, by: 'Вэб' }
       // Goes through a security-definer RPC (not direct table access) so the
       // public anon key never needs read/write on the shared customers table —
