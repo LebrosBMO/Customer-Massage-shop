@@ -186,8 +186,8 @@ export default function Funnel() {
       const tgQuestionText = Object.values(byId).find((q) => /телеграм/i.test(q.question || ''))?.question
       const qaLines = buildAnswerLog()
         .filter((a) => a.question !== tgQuestionText)
-        .map((a) => `${a.question}: ${a.answer ?? ''}`)
-        .join('\n')
+        .map((a, i) => `${i + 1}) ${a.question}\n    → ${a.answer || '—'}`)
+        .join('\n\n')
       const noteText = 'Вэб анкетаас бүртгэгдсэн.\n' +
         'Телеграм: ' + name + '\n\n' +
         qaLines
