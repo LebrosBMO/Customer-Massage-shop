@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { brand } from '../data/content.js'
 import { funnelConfig } from '../data/funnel.js'
 import { useFunnel } from '../lib/useFunnel.js'
@@ -12,6 +12,14 @@ export default function Funnel() {
   const [history, setHistory] = useState([])
   const [answers, setAnswers] = useState({}) // single: index | multi: [indexes] | text: string
   const [saving, setSaving] = useState(false)
+  // Refs, not state — a ref is one shared mutable value, so every closure
+  // (including a stale one from a setTimeout scheduled a render or two ago)
+  // reads/writes the SAME up-to-date flag. Guards against a fast double-tap
+  // firing pickSingle/finish twice: two overlapping calls used to be able to
+  // write two near-simultaneous submissions to the DB, one of them missing
+  // the answer that was mid-flight when the second tap landed.
+  const advancingRef = useRef(false)
+  const submittingRef = useRef(false)
 
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
   const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
@@ -28,6 +36,7 @@ export default function Funnel() {
 
   function goTo(nextId) {
     setHistory((h) => [...h, current.id])
+    advancingRef.current = false // landing on a new question (or finishing) — allow the next pick
     if (nextId) setCurrentId(nextId)
     else finish(false)
   }
@@ -58,6 +67,8 @@ export default function Funnel() {
   // Single-choice: select then auto-advance, same as every other choice.
   // Any explanation text is shown as a caption on the choice itself.
   function pickSingle(choiceIndex) {
+    if (advancingRef.current) return // already picked for this question — ignore a fast double-tap
+    advancingRef.current = true
     const choice = current.choices[choiceIndex]
     setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
     setTimeout(() => advanceForChoice(choice), 220)
@@ -205,12 +216,19 @@ export default function Funnel() {
   // jumped straight to the end). `force` = treat as qualified regardless of
   // disqualifying answers (used by the "pay" branch).
   async function finish(force) {
-    if (saving) return
+    // A ref, not the `saving` state, is the real guard here: `saving` is read
+    // from whichever render's closure called finish(), so two near-
+    // simultaneous calls from two different closures can both see saving as
+    // still false and both slip through. submittingRef is one shared mutable
+    // flag every closure reads/writes the same copy of.
+    if (submittingRef.current) return
+    submittingRef.current = true
     setSaving(true)
     const qualified = force || evaluate()
     await saveSubmission(qualified)
     if (qualified) await createJournalCustomer()
     setSaving(false)
+    submittingRef.current = false
     setPhase(qualified ? 'done' : 'declined')
   }
 
