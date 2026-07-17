@@ -197,11 +197,19 @@ create table if not exists public.salon_funnel_submissions (
   qualified boolean,
   payment_status text not null default 'pending',
   amount int,
-  score int
+  score numeric
 );
 
 -- If the table already existed, make sure the score column is present.
-alter table public.salon_funnel_submissions add column if not exists score int;
+alter table public.salon_funnel_submissions add column if not exists score numeric;
+
+-- score was originally `int`, but computeScore() can return a fractional
+-- result (a question's group multiplier can be e.g. x1.5) — every such
+-- submission failed this insert with "invalid input syntax for type
+-- integer", silently (the error was never checked in the app), so the whole
+-- submissions log was quietly missing rows for weeks. Widen the column on
+-- any database where it's still `int` from before this fix.
+alter table public.salon_funnel_submissions alter column score type numeric using score::numeric;
 
 alter table public.salon_funnel_submissions enable row level security;
 

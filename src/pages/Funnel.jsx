@@ -14,12 +14,34 @@ export default function Funnel() {
   const [saving, setSaving] = useState(false)
   // Refs, not state — a ref is one shared mutable value, so every closure
   // (including a stale one from a setTimeout scheduled a render or two ago)
-  // reads/writes the SAME up-to-date flag. Guards against a fast double-tap
-  // firing pickSingle/finish twice: two overlapping calls used to be able to
-  // write two near-simultaneous submissions to the DB, one of them missing
-  // the answer that was mid-flight when the second tap landed.
+  // reads/writes the SAME up-to-date flag/value.
+  //
+  // answersRef mirrors `answers` and is what finish()/evaluate()/computeScore()
+  // /buildAnswerLog() actually read from. This is the fix for the real bug:
+  // pickSingle's auto-advance goes through `setTimeout(() => advanceForChoice(...), 220)`.
+  // That timeout callback is the closure captured at the moment of THIS click —
+  // it closes over THIS render's `answers`, not the answers-with-this-answer-
+  // just-added, because `setAnswers` only takes effect on a LATER render. So on
+  // the LAST question, finish() always ran with the answers as they were
+  // BEFORE the final pick — the very last answer was silently dropped from
+  // every single submission, every time, not just on a double-tap. A ref
+  // sidesteps this entirely: mutating answersRef.current is visible
+  // immediately to any closure, stale or not.
+  const answersRef = useRef({})
+  // Guards against a fast double-tap firing pickSingle/finish twice — two
+  // overlapping calls used to be able to write two near-simultaneous
+  // submissions to the DB. Still worth keeping alongside the fix above.
   const advancingRef = useRef(false)
   const submittingRef = useRef(false)
+
+  // Use this instead of setAnswers directly — keeps answersRef in lockstep.
+  function updateAnswers(updater) {
+    setAnswers((a) => {
+      const next = updater(a)
+      answersRef.current = next
+      return next
+    })
+  }
 
   const ordered = [...questions].sort((a, b) => a.sort_order - b.sort_order)
   const byId = Object.fromEntries(ordered.map((q) => [q.id, q]))
@@ -28,6 +50,7 @@ export default function Funnel() {
 
   function startFunnel() {
     if (!ordered.length) return
+    answersRef.current = {}
     setAnswers({})
     setHistory([])
     setCurrentId(ordered[0].id)
@@ -70,12 +93,12 @@ export default function Funnel() {
     if (advancingRef.current) return // already picked for this question — ignore a fast double-tap
     advancingRef.current = true
     const choice = current.choices[choiceIndex]
-    setAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
+    updateAnswers((a) => ({ ...a, [current.id]: choiceIndex }))
     setTimeout(() => advanceForChoice(choice), 220)
   }
 
   function toggleMulti(choiceIndex) {
-    setAnswers((a) => {
+    updateAnswers((a) => {
       const cur = Array.isArray(a[current.id]) ? a[current.id] : []
       const next = cur.includes(choiceIndex)
         ? cur.filter((x) => x !== choiceIndex)
@@ -85,7 +108,7 @@ export default function Funnel() {
   }
 
   function setText(value) {
-    setAnswers((a) => ({ ...a, [current.id]: value }))
+    updateAnswers((a) => ({ ...a, [current.id]: value }))
   }
 
   // Next button for multi/text questions.
@@ -113,8 +136,11 @@ export default function Funnel() {
   const canAdvance = !current?.required || answered
 
   // Qualified only if every answered choice-question used a valid choice.
+  // Reads answersRef (not the `answers` state) — see the comment on
+  // answersRef's declaration for why: this runs from inside finish(), which
+  // can be called from a stale closure that doesn't include the final pick.
   function evaluate() {
-    return Object.entries(answers).every(([qid, val]) => {
+    return Object.entries(answersRef.current).every(([qid, val]) => {
       const q = byId[qid]
       if (!q) return true
       const t = q.type || 'single'
@@ -129,7 +155,7 @@ export default function Funnel() {
   // (e.g. Group 1 = x1, Group 2 = x1.5). No group assigned = x1. Text
   // answers and unanswered questions contribute 0.
   function computeScore() {
-    return Object.entries(answers).reduce((total, [qid, val]) => {
+    return Object.entries(answersRef.current).reduce((total, [qid, val]) => {
       const q = byId[qid]
       if (!q) return total
       const mult = q.group_id && groupById[q.group_id] ? Number(groupById[q.group_id].multiplier) || 1 : 1
@@ -143,7 +169,7 @@ export default function Funnel() {
   }
 
   function buildAnswerLog() {
-    return Object.entries(answers).map(([qid, val]) => {
+    return Object.entries(answersRef.current).map(([qid, val]) => {
       const q = byId[qid]
       const t = q?.type || 'single'
       let answer
@@ -158,7 +184,7 @@ export default function Funnel() {
   // question text containing "телеграм"), regardless of its question id —
   // admins can freely edit/reorder questions without breaking this.
   function findTelegramAnswer() {
-    const entry = Object.entries(answers).find(([qid]) => {
+    const entry = Object.entries(answersRef.current).find(([qid]) => {
       const q = byId[qid]
       return q && /телеграм/i.test(q.question || '')
     })
@@ -173,7 +199,7 @@ export default function Funnel() {
 
   async function saveSubmission(qualified) {
     if (!supabaseConfigured) return
-    await supabase.from('salon_funnel_submissions').insert({
+    const { error } = await supabase.from('salon_funnel_submissions').insert({
       name: findTelegramAnswer(),
       phone: null,
       answers: buildAnswerLog(),
@@ -182,6 +208,12 @@ export default function Funnel() {
       amount: null,
       score: computeScore(),
     })
+    // This used to fail silently for every fractional score (e.g. 72.5, from
+    // a x1.5 group multiplier) because the `score` column was `int` — Postgres
+    // rejected the insert and the error was never checked, so it just vanished.
+    // Logged (not thrown) so a real customer's submission still completes even
+    // if this table write fails for some other reason in the future.
+    if (error) console.error('saveSubmission failed:', error.message)
   }
 
   // Register the person in the manager app's customer journal (customers
