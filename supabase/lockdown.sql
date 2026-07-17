@@ -72,8 +72,13 @@ create policy "Admin can manage salary" on public.salary_payments for all to aut
 -- Staff (logged in) get full access. The public funnel no longer touches
 -- this table directly at all — it calls register_funnel_lead() below, which
 -- runs with elevated rights internally but only exposes a narrow, safe
--- "create or append a note" operation. Update Funnel.jsx's
+-- "create a new customer" operation. Update Funnel.jsx's
 -- createJournalCustomer() to call this RPC (already done in this session).
+--
+-- Every submission creates its own customer row — no name-based matching or
+-- merging. Two submissions with the same name (really: same typed Telegram
+-- handle) are two different customers with two different SLA codes, since
+-- name alone isn't a reliable way to tell two people apart.
 -- ---------------------------------------------------------------------------
 alter table public.customers enable row level security;
 drop policy if exists "Staff can manage customers" on public.customers;
@@ -86,20 +91,9 @@ security definer
 set search_path = public
 as $$
 declare
-  v_id text;
-  v_notes jsonb;
   v_code text;
 begin
   if p_name is null or btrim(p_name) = '' then
-    return;
-  end if;
-
-  select id, notes into v_id, v_notes from public.customers where name ilike p_name limit 1;
-
-  if v_id is not null then
-    update public.customers
-      set notes = coalesce(v_notes, '[]'::jsonb) || jsonb_build_array(p_note)
-      where id = v_id;
     return;
   end if;
 
